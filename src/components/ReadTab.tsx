@@ -2,8 +2,8 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Tab } from "../types";
 import { useAppStore } from "../store/useAppStore";
-import { MessageRow } from "./MessageRow";
-
+import { ReadMessageList } from "./ReadMessageList";
+import { ReadMessageCount } from "./ReadMessageCount";
 interface Props {
   tab: Tab;
 }
@@ -15,7 +15,6 @@ interface ConsumerSessionInfo {
 
 export function ReadTab({ tab }: Props) {
   const [error, setError] = useState<string | null>(null);
-  const messages = useAppStore((s) => s.messages[tab.id] ?? []);
   const clearMessages = useAppStore((s) => s.clearMessages);
   const updateTab = useAppStore((s) => s.updateTab);
 
@@ -158,30 +157,13 @@ export function ReadTab({ tab }: Props) {
             Clear
           </button>
 
-          <span className="msg-count" style={{ marginLeft: "6px" }}>
-            {messages.length} received
-          </span>
+          <ReadMessageCount tabId={tab.id} />
         </div>
       </div>
 
       {error && <div className="read-error">{error}</div>}
 
-      <div className="message-list">
-        {messages.length === 0 ? (
-          <div className="empty-state" style={{ height: "100%", justifyContent: "center" }}>
-            <svg className="empty-state-icon" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            <p style={{ fontSize: "14px", marginTop: "8px" }}>
-              {started
-                ? "Listening for streaming messages from queue..."
-                : "Press Connect to begin consuming messages."}
-            </p>
-          </div>
-        ) : (
-          messages.map((msg) => <MessageRow key={msg.id} message={msg} />)
-        )}
-      </div>
+      <ReadMessageList tabId={tab.id} started={started} />
     </div>
   );
 }

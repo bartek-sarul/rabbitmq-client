@@ -25,6 +25,8 @@ pub struct QueueDef {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExchangeDef {
     pub name: String,
+    #[serde(default)]
+    pub routing_keys: Vec<String>,
 }
 
 

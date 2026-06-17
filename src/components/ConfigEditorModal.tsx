@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppConfig, ConnectionDef } from "../types";
 
@@ -25,9 +25,32 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
 
   const [connToDeleteIndex, setConnToDeleteIndex] = useState<number | null>(null);
 
+  const [editingQueueIndex, setEditingQueueIndex] = useState<number | null>(null);
+  const [editingQueueName, setEditingQueueName] = useState("");
+
+  const [editingExIndex, setEditingExIndex] = useState<number | null>(null);
+  const [editingExName, setEditingExName] = useState("");
+
   const isMac = navigator.userAgent.includes("Macintosh");
   const isWindows = navigator.userAgent.includes("Windows");
   const showFolderLabel = isMac ? "Show in Finder" : isWindows ? "Show in Explorer" : "Show in File Manager";
+
+  useEffect(() => {
+    setEditingQueueIndex(null);
+    setEditingExIndex(null);
+  }, [selectedConnIndex]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (editingQueueIndex === null && editingExIndex === null && connToDeleteIndex === null) {
+          onClose();
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, editingQueueIndex, editingExIndex, connToDeleteIndex]);
 
   // Visual editing mutations
   function handleAddConnection() {
@@ -95,6 +118,18 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
     setConnections(nextConns);
   }
 
+  function handleSaveQueueEdit(qIndex: number) {
+    if (selectedConnIndex === null) return;
+    const nextConns = [...connections];
+    const conn = nextConns[selectedConnIndex];
+    const trimmed = editingQueueName.trim();
+    if (trimmed && !conn.queues.some((q, i) => i !== qIndex && q.name === trimmed)) {
+      conn.queues[qIndex].name = trimmed;
+      setConnections(nextConns);
+    }
+    setEditingQueueIndex(null);
+  }
+
   // Exchanges list editing
   function handleAddExchange() {
     if (selectedConnIndex === null || !newExName.trim()) return;
@@ -119,6 +154,41 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
     const conn = nextConns[selectedConnIndex];
     conn.exchanges = conn.exchanges.filter((_, i) => i !== exIndex);
     setConnections(nextConns);
+  }
+
+  function handleAddRoutingKey(exIndex: number, key: string) {
+    if (selectedConnIndex === null || !key.trim()) return;
+    const nextConns = [...connections];
+    const conn = nextConns[selectedConnIndex];
+    if (!conn.exchanges[exIndex].routing_keys) {
+      conn.exchanges[exIndex].routing_keys = [];
+    }
+    if (!conn.exchanges[exIndex].routing_keys!.includes(key.trim())) {
+      conn.exchanges[exIndex].routing_keys!.push(key.trim());
+      setConnections(nextConns);
+    }
+  }
+
+  function handleDeleteRoutingKey(exIndex: number, keyIndex: number) {
+    if (selectedConnIndex === null) return;
+    const nextConns = [...connections];
+    const conn = nextConns[selectedConnIndex];
+    if (conn.exchanges[exIndex].routing_keys) {
+      conn.exchanges[exIndex].routing_keys = conn.exchanges[exIndex].routing_keys!.filter((_, i) => i !== keyIndex);
+      setConnections(nextConns);
+    }
+  }
+
+  function handleSaveExEdit(exIndex: number) {
+    if (selectedConnIndex === null) return;
+    const nextConns = [...connections];
+    const conn = nextConns[selectedConnIndex];
+    const trimmed = editingExName.trim();
+    if (trimmed && !conn.exchanges.some((ex, i) => i !== exIndex && ex.name === trimmed)) {
+      conn.exchanges[exIndex].name = trimmed;
+      setConnections(nextConns);
+    }
+    setEditingExIndex(null);
   }
 
   // Open config file folder on desktop
@@ -207,11 +277,11 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
             display: "flex",
             flexDirection: "column",
             background: "var(--bg-sidebar)",
-            overflowY: "auto",
+            overflow: "hidden",
             padding: "16px"
           }}>
             <div style={{ marginBottom: "20px" }}>
-              <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: "6px" }}>Save Path</label>
+              <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Configuration file path</label>
               <input
                 type="text"
                 value={savePath}
@@ -229,7 +299,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
               />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
               <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: "6px" }}>Connections</label>
               <div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1, overflowY: "auto", marginBottom: "16px" }}>
                 {connections.map((c, i) => (
@@ -312,9 +382,9 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
           </div>
 
           {/* Right panel */}
-          <div style={{ flex: 1, padding: "24px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, padding: "24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
             {selectedConn ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "20px", flex: 1 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px", flex: 1, minHeight: 0 }}>
                 <div style={{ display: "flex", gap: "16px" }}>
                   <div style={{ flex: 1 }}>
                     <label style={{ fontSize: "12px", color: "var(--text-secondary)", display: "block", marginBottom: "6px" }}>Name</label>
@@ -334,7 +404,38 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                     />
                   </div>
                   <div style={{ flex: 2 }}>
-                    <label style={{ fontSize: "12px", color: "var(--text-secondary)", display: "block", marginBottom: "6px" }}>AMQP URL</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                      <label style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0 }}>AMQP URL</label>
+                      <div className="tooltip-container" style={{ position: "relative", display: "inline-flex", cursor: "help" }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-muted)" }}>
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <div className="tooltip-text" style={{
+                          position: "absolute",
+                          bottom: "100%",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          marginBottom: "8px",
+                          width: "260px",
+                          background: "var(--bg-active)",
+                          border: "1px solid var(--border-color)",
+                          color: "var(--text-primary)",
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          fontSize: "11px",
+                          lineHeight: 1.4,
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                          pointerEvents: "none",
+                          opacity: 0,
+                          transition: "opacity 0.2s",
+                          zIndex: 100
+                        }}>
+                          You can use environment variables in the format <code style={{color: "var(--accent-color)"}}>${"{VAR_NAME}"}</code>. Define them in a <code style={{color: "var(--accent-color)"}}>.env</code> file next to the app, or export them in your terminal profile.
+                        </div>
+                      </div>
+                    </div>
                     <input
                       type="text"
                       value={selectedConn.url}
@@ -352,33 +453,66 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "24px" }}>
+                <div style={{ display: "flex", gap: "24px", flex: 1, minHeight: 0 }}>
                   {/* Queues list */}
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>Queues</label>
                     <div style={{
                       border: "1px solid var(--border-color)",
                       borderRadius: "8px",
-                      height: "180px",
+                      flex: 1,
+                      minHeight: 0,
                       overflowY: "auto",
                       padding: "8px",
                       background: "var(--bg-sidebar)",
                       marginBottom: "8px"
                     }}>
                       {selectedConn.queues.map((q, qi) => (
-                        <div key={qi} style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "4px 8px",
-                          borderRadius: "4px",
-                          fontSize: "12px",
-                          color: "var(--text-primary)",
-                          background: "var(--bg-primary)",
-                          marginBottom: "4px",
-                          border: "1px solid var(--border-color)"
-                        }}>
-                          <span>{q.name}</span>
+                        <div 
+                          key={qi} 
+                          onDoubleClick={() => {
+                            setEditingQueueIndex(qi);
+                            setEditingQueueName(q.name);
+                          }}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            color: "var(--text-primary)",
+                            background: "var(--bg-primary)",
+                            marginBottom: "4px",
+                            border: "1px solid var(--border-color)"
+                          }}
+                        >
+                          {editingQueueIndex === qi ? (
+                            <input
+                              autoFocus
+                              type="text"
+                              value={editingQueueName}
+                              onChange={(e) => setEditingQueueName(e.target.value)}
+                              onBlur={() => handleSaveQueueEdit(qi)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveQueueEdit(qi);
+                                if (e.key === 'Escape') setEditingQueueIndex(null);
+                              }}
+                              style={{ 
+                                flex: 1, 
+                                padding: "2px 6px", 
+                                fontSize: "12px", 
+                                background: "var(--bg-sidebar)",
+                                border: "1px solid var(--primary-color)",
+                                borderRadius: "4px",
+                                color: "var(--text-primary)",
+                                outline: "none",
+                                marginRight: "8px"
+                              }}
+                            />
+                          ) : (
+                            <span style={{ flex: 1, userSelect: "none" }} title="Double click to rename">{q.name}</span>
+                          )}
                           <button
                             onClick={() => handleDeleteQueue(qi)}
                             className="config-item-delete-btn"
@@ -425,39 +559,126 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                   </div>
 
                   {/* Exchanges list */}
-                  <div style={{ flex: 1.2 }}>
+                  <div style={{ flex: 1.2, display: "flex", flexDirection: "column" }}>
                     <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>Exchanges</label>
                     <div style={{
                       border: "1px solid var(--border-color)",
                       borderRadius: "8px",
-                      height: "180px",
+                      flex: 1,
+                      minHeight: 0,
                       overflowY: "auto",
                       padding: "8px",
                       background: "var(--bg-sidebar)",
                       marginBottom: "8px"
                     }}>
                       {selectedConn.exchanges.map((ex, exi) => (
-                        <div key={exi} style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "4px 8px",
-                          borderRadius: "4px",
-                          fontSize: "12px",
-                          color: "var(--text-primary)",
-                          background: "var(--bg-primary)",
-                          marginBottom: "4px",
-                          border: "1px solid var(--border-color)"
-                        }}>
-                          <span style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                            <strong>{ex.name}</strong>
-                          </span>
-                          <button
-                            onClick={() => handleDeleteExchange(exi)}
-                            className="config-item-delete-btn"
+                        <div 
+                          key={exi} 
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            color: "var(--text-primary)",
+                            background: "var(--bg-primary)",
+                            marginBottom: "4px",
+                            border: "1px solid var(--border-color)"
+                          }}
+                        >
+                          <div 
+                            onDoubleClick={() => {
+                              setEditingExIndex(exi);
+                              setEditingExName(ex.name);
+                            }}
+                            style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
                           >
-                            ✕
-                          </button>
+                            {editingExIndex === exi ? (
+                              <input
+                                autoFocus
+                                type="text"
+                                value={editingExName}
+                                onChange={(e) => setEditingExName(e.target.value)}
+                                onBlur={() => handleSaveExEdit(exi)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveExEdit(exi);
+                                  if (e.key === 'Escape') setEditingExIndex(null);
+                                }}
+                                style={{ 
+                                  flex: 1, 
+                                  padding: "2px 6px", 
+                                  fontSize: "12px", 
+                                  background: "var(--bg-sidebar)",
+                                  border: "1px solid var(--primary-color)",
+                                  borderRadius: "4px",
+                                  color: "var(--text-primary)",
+                                  outline: "none",
+                                  marginRight: "8px"
+                                }}
+                              />
+                            ) : (
+                              <span style={{ display: "flex", gap: "6px", alignItems: "center", flex: 1, userSelect: "none" }} title="Double click to rename">
+                                {ex.name}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleDeleteExchange(exi)}
+                              className="config-item-delete-btn"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <div style={{ marginTop: "4px", paddingTop: "4px", borderTop: "1px dashed var(--border-color)", display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 500 }}>Predefined Routing Keys:</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                              {ex.routing_keys?.map((rk, rki) => (
+                                <div key={rki} style={{ background: "var(--bg-sidebar)", padding: "2px 6px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "4px", border: "1px solid var(--border-color)", fontSize: "10px" }}>
+                                  {rk}
+                                  <button onClick={() => handleDeleteRoutingKey(exi, rki)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "10px", padding: 0, display: "flex" }}>✕</button>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{ display: "flex", gap: "4px", marginTop: "2px" }}>
+                              <input 
+                                id={`rk-input-${exi}`}
+                                type="text"
+                                placeholder="Add key..."
+                                style={{ flex: 1, padding: "2px 6px", fontSize: "10px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", borderRadius: "4px", color: "var(--text-primary)" }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleAddRoutingKey(exi, e.currentTarget.value);
+                                    e.currentTarget.value = "";
+                                  }
+                                }}
+                              />
+                              <button
+                                onClick={() => {
+                                  const input = document.getElementById(`rk-input-${exi}`) as HTMLInputElement;
+                                  if (input) {
+                                    handleAddRoutingKey(exi, input.value);
+                                    input.value = "";
+                                  }
+                                }}
+                                style={{
+                                  background: "var(--bg-active)",
+                                  color: "var(--text-primary)",
+                                  border: "1px solid var(--border-color)",
+                                  padding: "2px 8px",
+                                  borderRadius: "4px",
+                                  cursor: "pointer",
+                                  fontSize: "12px",
+                                  fontWeight: 500,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}
+                                title="Add routing key"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ))}
                       {selectedConn.exchanges.length === 0 && (

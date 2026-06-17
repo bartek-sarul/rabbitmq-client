@@ -3,15 +3,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { Tab } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { useAppStore } from "../store/useAppStore";
+import { AutocompleteInput } from "./AutocompleteInput";
 import { sanitizeQuotes } from "../utils/sanitize";
-import { open } from "@tauri-apps/plugin-dialog";
-
-interface BulkFile {
-  path: string;
-  name: string;
-  status: 'pending' | 'sending' | 'sent' | 'error';
-  errorMsg?: string;
-}
+import { BulkSender } from "./BulkSender";
+import { HeadersEditorModal } from "./HeadersEditorModal";
 
 interface Props {
   tab: Tab;
@@ -22,10 +17,9 @@ export function WriteTab({ tab }: Props) {
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [headersError, setHeadersError] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-
-  const [bulkFiles, setBulkFiles] = useState<BulkFile[]>([]);
-  const [bulkSending, setBulkSending] = useState(false);
+  const [showHeadersEditor, setShowHeadersEditor] = useState(false);
   const [mode, setMode] = useState<'single' | 'bulk'>('single');
+  const [footerPortalTarget, setFooterPortalTarget] = useState<HTMLDivElement | null>(null);
 
   const updateTab = useAppStore((s) => s.updateTab);
 
@@ -116,85 +110,6 @@ export function WriteTab({ tab }: Props) {
     setShowResetConfirm(true);
   }
 
-  async function handleBulkSelect() {
-    try {
-      const selected = await open({
-        multiple: true,
-        directory: false,
-      });
-      if (!selected) return;
-
-      const paths = Array.isArray(selected) ? selected : [selected];
-      
-      const newFiles: BulkFile[] = paths.map(p => {
-        const name = p.split(/[/\\]/).pop() || p;
-        return {
-          path: p,
-          name,
-          status: 'pending'
-        };
-      });
-
-      setBulkFiles(newFiles);
-    } catch (e) {
-      console.error("Failed to select files:", e);
-    }
-  }
-
-  async function handleBulkSend() {
-    setBulkSending(true);
-    
-    let currentFiles = [...bulkFiles];
-    
-    let currentCorrId = correlationId;
-    let currentMsgId = messageId;
-    
-    for (let i = 0; i < currentFiles.length; i++) {
-      const f = currentFiles[i];
-      if (f.status === 'sent') continue;
-
-      currentFiles[i] = { ...f, status: 'sending', errorMsg: undefined };
-      setBulkFiles([...currentFiles]);
-
-      try {
-        const content = await invoke<string>("read_message_file", { path: f.path });
-        
-        const finalCorrelationId = currentCorrId.trim() || null;
-        const finalMessageId = currentMsgId.trim() || null;
-
-        await invoke("send_message", {
-          tabId: tab.id,
-          body: content,
-          routingKey: routingKey.trim() || null,
-          headers: headers.trim() || null,
-          properties: {
-            content_type: contentType.trim() || null,
-            delivery_mode: deliveryMode,
-            correlation_id: finalCorrelationId,
-            message_id: finalMessageId,
-          },
-        });
-
-        currentFiles[i] = { ...f, status: 'sent' };
-        
-        if (autoCorrelationId) currentCorrId = uuidv4();
-        if (autoMessageId) currentMsgId = uuidv4();
-      } catch (e) {
-        currentFiles[i] = { ...f, status: 'error', errorMsg: String(e) };
-      }
-      setBulkFiles([...currentFiles]);
-    }
-
-    const updates: any = {};
-    if (autoCorrelationId) updates.correlationId = currentCorrId;
-    if (autoMessageId) updates.messageId = currentMsgId;
-    if (Object.keys(updates).length > 0) {
-      updateTab(tab.id, updates);
-    }
-
-    setBulkSending(false);
-  }
-
   return (
     <div className="write-tab" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "32px 40px 16px 40px", display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -215,49 +130,14 @@ export function WriteTab({ tab }: Props) {
           Routing key <span className="optional">(optional)</span>
         </label>
         <div style={{ position: "relative", display: "flex", alignItems: "center", width: "100%", maxWidth: "450px" }}>
-          <input
-            className="routing-key-input"
-            type="text"
+          <AutocompleteInput
             value={tab.targetType === "queue" ? "" : routingKey}
-            onChange={(e) => handleTextChange("routingKey", e.target.value)}
+            onChange={(val) => handleTextChange("routingKey", val)}
+            options={tab.predefinedRoutingKeys || []}
             placeholder={tab.targetType === "queue" ? "Not applicable for queues" : "Enter routing key (defaults to empty)"}
             disabled={tab.targetType === "queue"}
             title={tab.targetType === "queue" ? "Routing keys are not used when publishing directly to a queue" : ""}
-            spellCheck={false}
-            autoCorrect="off"
-            autoCapitalize="off"
-            autoComplete="off"
-            style={{ 
-              paddingRight: "30px", 
-              width: "100%", 
-              maxWidth: "450px",
-              opacity: tab.targetType === "queue" ? 0.6 : 1,
-              backgroundColor: tab.targetType === "queue" ? "var(--bg-secondary)" : undefined
-            }}
           />
-          {routingKey && tab.targetType !== "queue" && (
-            <button
-              type="button"
-              onClick={() => handleTextChange("routingKey", "")}
-              style={{
-                position: "absolute",
-                right: "12px",
-                background: "transparent",
-                border: "none",
-                color: "var(--text-muted)",
-                cursor: "pointer",
-                padding: "4px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "12px",
-                lineHeight: 1
-              }}
-              title="Clear"
-            >
-              ✕
-            </button>
-          )}
         </div>
       </div>
 
@@ -266,40 +146,18 @@ export function WriteTab({ tab }: Props) {
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
           <label className="field-label" style={{ fontSize: "11px" }}>Content Type</label>
           <div style={{ position: "relative", display: "flex", alignItems: "center", width: "100%" }}>
-            <input
-              type="text"
+            <AutocompleteInput
               value={contentType}
-              onChange={(e) => handleTextChange("contentType", e.target.value)}
+              onChange={(val) => handleTextChange("contentType", val)}
+              options={[
+                "application/json",
+                "text/plain",
+                "application/xml",
+                "text/html",
+                "application/x-www-form-urlencoded"
+              ]}
               placeholder="e.g. application/json"
-              style={{ padding: "8px 30px 8px 12px", fontSize: "13px", height: "36px", boxSizing: "border-box", width: "100%" }}
-              spellCheck={false}
-              autoCorrect="off"
-              autoCapitalize="off"
-              autoComplete="off"
             />
-            {contentType && (
-              <button
-                type="button"
-                onClick={() => handleTextChange("contentType", "")}
-                style={{
-                  position: "absolute",
-                  right: "8px",
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--text-muted)",
-                  cursor: "pointer",
-                  padding: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "11px",
-                  lineHeight: 1
-                }}
-                title="Clear"
-              >
-                ✕
-              </button>
-            )}
           </div>
         </div>
 
@@ -455,10 +313,31 @@ export function WriteTab({ tab }: Props) {
         </div>
 
         <div style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label className="field-label" style={{ fontSize: "11px" }}>
-            Headers <span className="optional">(JSON object)</span>
-            {headersError && <span style={{ color: "var(--danger-color)", marginLeft: "auto", fontSize: "11px" }}>{headersError}</span>}
-          </label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <label className="field-label" style={{ fontSize: "11px", margin: 0 }}>
+              Headers <span className="optional">(JSON object)</span>
+              {headersError && <span style={{ color: "var(--danger-color)", marginLeft: "12px", fontSize: "11px" }}>{headersError}</span>}
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowHeadersEditor(true)}
+              style={{
+                background: "var(--bg-active)",
+                border: "1px solid var(--border-color)",
+                color: "var(--text-primary)",
+                padding: "4px 8px",
+                borderRadius: "4px",
+                fontSize: "11px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              Edit Headers
+            </button>
+          </div>
           <div style={{ position: "relative", display: "flex", flexDirection: "column", width: "100%" }}>
             <textarea
               value={headers}
@@ -531,203 +410,140 @@ export function WriteTab({ tab }: Props) {
           </button>
         </div>
 
-        {mode === 'single' ? (
-          <textarea
-            className="message-body"
-            value={body}
-            onChange={(e) => handleTextChange("body", e.target.value)}
-            placeholder='{"message": "Type your payload here..."}'
-            rows={14}
-            spellCheck={false}
-            autoCorrect="off"
-            autoCapitalize="off"
-            autoComplete="off"
-            style={{ marginTop: "8px" }}
-          />
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, marginTop: "8px", border: "1px solid var(--border-color)", borderRadius: "6px", padding: "12px", backgroundColor: "var(--bg-secondary)" }}>
-            <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-              <button type="button" className="btn-primary" onClick={handleBulkSelect} disabled={bulkSending} style={{ padding: "4px 12px", fontSize: "12px", height: "auto" }}>
-                Select files
-              </button>
-              <button type="button" className="btn-secondary" onClick={() => setBulkFiles([])} disabled={bulkSending || bulkFiles.length === 0} style={{ padding: "4px 12px", fontSize: "12px", height: "auto" }}>
-                Clear
-              </button>
-            </div>
-            
-            <div style={{ overflowY: "auto", border: "1px solid var(--border-color)", borderRadius: "4px", padding: "8px", display: "flex", flexDirection: "column", gap: "8px", backgroundColor: "var(--bg-primary)", height: "300px" }}>
-              {bulkFiles.length === 0 ? (
-                <div style={{ color: "var(--text-muted)", fontSize: "13px", textAlign: "center", marginTop: "24px" }}>No files selected. Click "Select files" to add JSON payloads.</div>
-              ) : (
-                bulkFiles.map((file, idx) => (
-                  <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px", backgroundColor: "var(--bg-secondary)", borderRadius: "4px" }}>
-                    <div style={{ display: "flex", flexDirection: "column", maxWidth: "70%" }}>
-                      <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{file.name}</span>
-                      {file.errorMsg && <span style={{ fontSize: "11px", color: "var(--danger-color)", marginTop: "2px" }}>{file.errorMsg}</span>}
-                    </div>
-                    
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                      {file.status === 'pending' && <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Pending</span>}
-                      {file.status === 'sending' && (
-                        <span style={{ fontSize: "12px", color: "var(--primary-color)", display: "flex", alignItems: "center", gap: "4px" }}>
-                          <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "pulse 1s infinite" }}>
-                            <circle cx="12" cy="12" r="10" strokeDasharray="30 10" />
-                          </svg>
-                          Sending...
-                        </span>
-                      )}
-                      {file.status === 'sent' && <span style={{ fontSize: "12px", color: "var(--success-color)", fontWeight: "bold" }}>Sent</span>}
-                      {file.status === 'error' && (
-                        <>
-                          <span style={{ fontSize: "12px", color: "var(--danger-color)", fontWeight: "bold" }}>Error</span>
-                          <button
-                            type="button"
-                            className="btn-secondary"
-                            style={{ padding: "4px 8px", fontSize: "11px", height: "auto" }}
-                            onClick={async () => {
-                              if (bulkSending) return;
-                              // Retry just this file
-                              setBulkSending(true);
-                              const updated = [...bulkFiles];
-                              updated[idx] = { ...file, status: 'sending', errorMsg: undefined };
-                              setBulkFiles([...updated]);
-                              
-                              const finalCorrelationId = correlationId.trim() || null;
-                              const finalMessageId = messageId.trim() || null;
-
-                              try {
-                                const content = await invoke<string>("read_message_file", { path: file.path });
-                                await invoke("send_message", {
-                                  tabId: tab.id,
-                                  body: content,
-                                  routingKey: routingKey.trim() || null,
-                                  headers: headers.trim() || null,
-                                  properties: {
-                                    content_type: contentType.trim() || null,
-                                    delivery_mode: deliveryMode,
-                                    correlation_id: finalCorrelationId,
-                                    message_id: finalMessageId,
-                                  },
-                                });
-                                updated[idx] = { ...updated[idx], status: 'sent' };
-                                
-                                const updates: any = {};
-                                if (autoCorrelationId) updates.correlationId = uuidv4();
-                                if (autoMessageId) updates.messageId = uuidv4();
-                                if (Object.keys(updates).length > 0) updateTab(tab.id, updates);
-                              } catch (e) {
-                                updated[idx] = { ...updated[idx], status: 'error', errorMsg: String(e) };
-                              }
-                              setBulkFiles([...updated]);
-                              setBulkSending(false);
-                            }}
-                            disabled={bulkSending}
-                          >
-                            Retry
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))
+              <div style={{ flexGrow: 1, display: mode === 'single' ? "flex" : "none", flexDirection: "column" }}>
+            <label className="field-label" style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Message payload (JSON)</span>
+              {headersError && <span style={{ color: "var(--danger-color)", fontSize: "12px", fontWeight: "normal" }}>Cannot send: {headersError}</span>}
+            </label>
+            <div style={{ position: "relative", flexGrow: 1, display: "flex", flexDirection: "column" }}>
+              <textarea
+                className="payload-editor"
+                value={body}
+                onChange={(e) => handleTextChange("body", e.target.value)}
+                placeholder={`{
+  "key": "value"
+}`}
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="off"
+                autoComplete="off"
+                style={{
+                  flexGrow: 1,
+                  resize: "none",
+                  height: "100%",
+                  minHeight: "150px"
+                }}
+              />
+              {body && (
+                <button
+                  type="button"
+                  onClick={() => handleTextChange("body", "")}
+                  style={{
+                    position: "absolute",
+                    top: "8px",
+                    right: "12px",
+                    background: "var(--bg-primary)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "4px",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    padding: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+                  }}
+                  title="Clear payload"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
               )}
             </div>
           </div>
-        )}
-      </div>
+          
+          <BulkSender 
+            tab={tab}
+            routingKey={routingKey}
+            headers={headers}
+            contentType={contentType}
+            deliveryMode={deliveryMode}
+            correlationId={correlationId}
+            autoCorrelationId={autoCorrelationId}
+            messageId={messageId}
+            autoMessageId={autoMessageId}
+            onReset={handleReset}
+            footerPortalTarget={footerPortalTarget}
+            isActive={mode === 'bulk'}
+          />
+        </div>
       </div>
 
-      <div className="write-tab-footer" style={{ padding: "16px 40px", borderTop: "1px solid var(--border-color)", backgroundColor: "var(--bg-primary)", marginTop: 0, flexShrink: 0 }}>
-        <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
-          {mode === 'single' && status && (
-            <span className={`send-status ${status.ok ? "ok" : "err"}`}>
-              {status.ok ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
+      <div 
+        className="write-tab-footer" 
+        ref={setFooterPortalTarget} 
+        style={{ padding: "16px 40px", borderTop: "1px solid var(--border-color)", backgroundColor: "var(--bg-primary)", marginTop: 0, flexShrink: 0, display: mode === 'single' ? "flex" : (footerPortalTarget ? "flex" : "none") }}
+      >
+        {mode === 'single' && (
+          <>
+            <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+              {status && (
+                <span className={`send-status ${status.ok ? "ok" : "err"}`}>
+                  {status.ok ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  )}
+                  {status.msg}
+                </span>
               )}
-              {status.msg}
-            </span>
-          )}
-          {mode === 'bulk' && bulkFiles.some(f => f.status === 'sent') && (
-            <span style={{ fontSize: "13px", color: "var(--success-color)", fontWeight: 500 }}>
-              {bulkFiles.filter(f => f.status === 'sent').length} / {bulkFiles.length} sent
-            </span>
-          )}
-        </div>
+            </div>
 
-        <div style={{ display: "flex", gap: "12px", alignItems: "center", flexShrink: 0 }}>
-          {mode === 'bulk' && bulkFiles.some(f => f.status === 'error') && (
-            <button 
-              type="button"
-              className="btn-secondary" 
-              onClick={handleBulkSend}
-              disabled={bulkSending}
-              style={{ color: "var(--danger-color)", borderColor: "var(--danger-color)" }}
-            >
-              Resend failed
-            </button>
-          )}
+            <div style={{ display: "flex", gap: "12px", alignItems: "center", flexShrink: 0 }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleReset}
+                disabled={sending}
+                style={{ borderColor: "var(--border-color)" }}
+              >
+                Reset
+              </button>
 
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={handleReset}
-            disabled={sending || bulkSending}
-            style={{ borderColor: "var(--border-color)" }}
-          >
-            Reset
-          </button>
-
-          <button
-            className="btn-primary"
-            onClick={mode === 'single' ? handleSend : handleBulkSend}
-            disabled={mode === 'single' ? (sending || !body.trim() || !!headersError) : (bulkSending || bulkFiles.every(f => f.status === 'sent') || bulkFiles.length === 0)}
-            style={{ width: "220px", display: "flex", justifyContent: "center", alignItems: "center", whiteSpace: "nowrap" }}
-          >
-            {mode === 'single' ? (
-              sending ? (
-                <>
-                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "pulse 1s infinite" }}>
-                    <circle cx="12" cy="12" r="10" strokeDasharray="30 10" />
-                  </svg>
-                  Publishing…
-                </>
-              ) : (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                  Publish Message
-                </>
-              )
-            ) : (
-              bulkSending ? (
-                <>
-                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "pulse 1s infinite" }}>
-                    <circle cx="12" cy="12" r="10" strokeDasharray="30 10" />
-                  </svg>
-                  Publishing All…
-                </>
-              ) : (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                  Publish All Messages
-                </>
-              )
-            )}
-          </button>
-        </div>
+              <button
+                className="btn-primary"
+                onClick={handleSend}
+                disabled={sending || !body.trim() || !!headersError}
+                style={{ width: "220px", display: "flex", justifyContent: "center", alignItems: "center", whiteSpace: "nowrap" }}
+              >
+                {sending ? (
+                  <>
+                    <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "pulse 1s infinite" }}>
+                      <circle cx="12" cy="12" r="10" strokeDasharray="30 10" />
+                    </svg>
+                    Publishing…
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13" />
+                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                    </svg>
+                    Publish Message
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {showResetConfirm && (
@@ -764,7 +580,6 @@ export function WriteTab({ tab }: Props) {
                     headers: "",
                   });
                   setStatus(null);
-                  setBulkFiles([]);
                   setShowResetConfirm(false);
                 }}
               >
@@ -773,6 +588,17 @@ export function WriteTab({ tab }: Props) {
             </div>
           </div>
         </div>
+      )}
+      
+      {showHeadersEditor && (
+        <HeadersEditorModal
+          initialHeadersJson={headers}
+          onSave={(newJson) => {
+            handleTextChange("headers", newJson);
+            setShowHeadersEditor(false);
+          }}
+          onClose={() => setShowHeadersEditor(false)}
+        />
       )}
     </div>
   );

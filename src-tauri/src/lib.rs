@@ -2,7 +2,7 @@ mod commands;
 mod config;
 mod tab_manager;
 
-use tab_manager::TabManager;
+use tab_manager::{TabManager, ConnectionPool};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -10,6 +10,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(TabManager::new())
+        .manage(ConnectionPool::new())
         .invoke_handler(tauri::generate_handler![
             commands::load_config_cmd,
             commands::open_tab,

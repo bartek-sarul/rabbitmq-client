@@ -1,12 +1,39 @@
 use lapin::options::{BasicAckOptions, BasicConsumeOptions, BasicNackOptions, BasicPublishOptions};
 use lapin::types::{AMQPValue, ShortString, FieldTable};
 use lapin::{BasicProperties, Connection, ConnectionProperties};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::config::{load_config, AppConfig};
-use crate::tab_manager::{ActiveTab, AckMode, TabManager, TabMode, TargetType};
+use crate::tab_manager::{ActiveTab, AckMode, TabManager, TabMode, TargetType, ConnectionPool};
+
+fn resolve_amqp_url(url: &str) -> Result<String, String> {
+    // Attempt to load .env, but ignore error if it doesn't exist
+    let _ = dotenvy::dotenv();
+
+    let mut resolved_url = url.to_string();
+    
+    let mut start = 0;
+    while let Some(open) = resolved_url[start..].find("${") {
+        let actual_open = start + open;
+        if let Some(close) = resolved_url[actual_open..].find('}') {
+            let actual_close = actual_open + close;
+            let var_name = &resolved_url[actual_open + 2..actual_close];
+            
+            let val = std::env::var(var_name)
+                .map_err(|_| format!("Missing environment variable: {}", var_name))?;
+                
+            resolved_url.replace_range(actual_open..=actual_close, &val);
+            start = 0;
+        } else {
+            break;
+        }
+    }
+    
+    Ok(resolved_url)
+}
 
 #[derive(serde::Deserialize)]
 pub struct SendProperties {
@@ -89,8 +116,6 @@ pub async fn open_tab(
     state: State<'_, TabManager>,
 ) -> Result<(), String> {
     let tab = ActiveTab {
-        connection: None,
-        channel: None,
         cancel: CancellationToken::new(),
         mode,
         ack_mode,
@@ -118,12 +143,34 @@ pub async fn send_message(
     headers: Option<String>,
     properties: Option<SendProperties>,
     state: State<'_, TabManager>,
+    pool: State<'_, ConnectionPool>,
 ) -> Result<(), String> {
     let (conn_url, target_name, target_type) = state.inner().get_publisher_info(&tab_id)?;
+    let conn_url = resolve_amqp_url(&conn_url)?;
 
-    let connection = Connection::connect(&conn_url, ConnectionProperties::default())
-        .await
-        .map_err(|e| format!("Connection failed: {e}"))?;
+    let connection = {
+        let mut pool_guard = pool.0.lock().await;
+        if let Some(conn) = pool_guard.get(&conn_url) {
+            if conn.status().connected() {
+                conn.clone()
+            } else {
+                pool_guard.remove(&conn_url);
+                let new_conn = Connection::connect(&conn_url, ConnectionProperties::default())
+                    .await
+                    .map_err(|e| format!("Connection failed: {e}"))?;
+                let arc_conn = Arc::new(new_conn);
+                pool_guard.insert(conn_url.clone(), arc_conn.clone());
+                arc_conn
+            }
+        } else {
+            let new_conn = Connection::connect(&conn_url, ConnectionProperties::default())
+                .await
+                .map_err(|e| format!("Connection failed: {e}"))?;
+            let arc_conn = Arc::new(new_conn);
+            pool_guard.insert(conn_url.clone(), arc_conn.clone());
+            arc_conn
+        }
+    };
 
     let channel = connection
         .create_channel()
@@ -185,10 +232,9 @@ pub async fn send_message(
         .await
         .map_err(|e| format!("Publish confirmation failed: {e}"))?;
 
-    connection
-        .close(200, "OK")
-        .await
-        .map_err(|e| format!("Failed to close connection gracefully: {e}"))?;
+    // We do NOT close the connection anymore as it is pooled
+    // It will live until the app exits or connection drops natively
+    let _ = channel.close(200, "OK").await;
 
     Ok(())
 }
@@ -201,6 +247,7 @@ pub async fn start_consumer(
     app_handle: AppHandle,
 ) -> Result<ConsumerSessionInfo, String> {
     let (conn_url, conn_name, target_name, cancel) = state.inner().start_consumer_session(&tab_id, ack_mode.clone())?;
+    let conn_url = resolve_amqp_url(&conn_url)?;
 
     let config = load_config().map_err(|e| format!("Failed to load config: {e}"))?;
     let base_path = config.save_path.ok_or_else(|| {

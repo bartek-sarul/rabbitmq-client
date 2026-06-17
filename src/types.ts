@@ -4,6 +4,7 @@ export interface QueueDef {
 
 export interface ExchangeDef {
   name: string;
+  routing_keys?: string[];
 }
 
 
@@ -47,6 +48,7 @@ export interface Tab {
   messageId?: string;
   autoMessageId?: boolean;
   headers?: string;
+  predefinedRoutingKeys?: string[];
 }
 
 export interface Message {

@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 
-use lapin::{Channel, Connection};
+use std::sync::Arc;
+use lapin::Connection;
 use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -28,8 +29,6 @@ pub enum TargetType {
 
 #[allow(dead_code)]
 pub struct ActiveTab {
-    pub connection: Option<Connection>,
-    pub channel: Option<Channel>,
     pub cancel: CancellationToken,
     pub mode: TabMode,
     pub ack_mode: Option<AckMode>,
@@ -40,6 +39,14 @@ pub struct ActiveTab {
 }
 
 pub struct TabManager(pub Mutex<HashMap<String, ActiveTab>>);
+
+pub struct ConnectionPool(pub tokio::sync::Mutex<HashMap<String, Arc<Connection>>>);
+
+impl ConnectionPool {
+    pub fn new() -> Self {
+        ConnectionPool(tokio::sync::Mutex::new(HashMap::new()))
+    }
+}
 
 impl TabManager {
     pub fn new() -> Self {
@@ -114,8 +121,6 @@ mod tests {
         let cancel_token = CancellationToken::new();
         
         let tab = ActiveTab {
-            connection: None,
-            channel: None,
             cancel: cancel_token.clone(),
             mode: TabMode::Read,
             ack_mode: Some(AckMode::Ack),

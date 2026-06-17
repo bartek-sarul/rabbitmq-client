@@ -18,14 +18,28 @@ function App() {
       <div className="main-area">
         <TabBar />
         <div className="tab-content">
-          {!activeTab ? (
+          {tabs.length === 0 ? (
             <div className="empty-state">
               <p>Select a queue or exchange from the sidebar to open a tab.</p>
             </div>
-          ) : activeTab.mode === "write" ? (
-            <WriteTab key={activeTab.id} tab={activeTab} />
           ) : (
-            <ReadTab key={activeTab.id} tab={activeTab} />
+            tabs.map((tab) => (
+              <div 
+                key={tab.id}
+                style={{ 
+                  display: tab.id === activeTabId ? "flex" : "none",
+                  flexDirection: "column",
+                  flexGrow: 1,
+                  overflow: "hidden"
+                }}
+              >
+                {tab.mode === "write" ? (
+                  <WriteTab tab={tab} />
+                ) : (
+                  <ReadTab tab={tab} />
+                )}
+              </div>
+            ))
           )}
         </div>
       </div>

@@ -26,6 +26,9 @@ export function Sidebar() {
 
   const [showConfigEditor, setShowConfigEditor] = useState(false);
 
+  const tabs = useAppStore((s) => s.tabs);
+  const updateTab = useAppStore((s) => s.updateTab);
+
   const fetchConfig = () => {
     invoke<AppConfig>("load_config_cmd")
       .then(setConfig)
@@ -35,6 +38,26 @@ export function Sidebar() {
   useEffect(() => {
     fetchConfig();
   }, []);
+
+  useEffect(() => {
+    if (config) {
+      tabs.forEach(tab => {
+        if (tab.targetType === "exchange") {
+          const conn = config.connections.find(c => c.name === tab.connName);
+          if (conn) {
+            const ex = conn.exchanges.find(e => e.name === tab.targetName);
+            if (ex && ex.routing_keys) {
+              if (JSON.stringify(ex.routing_keys) !== JSON.stringify(tab.predefinedRoutingKeys)) {
+                updateTab(tab.id, { predefinedRoutingKeys: ex.routing_keys });
+              }
+            } else if (tab.predefinedRoutingKeys && tab.predefinedRoutingKeys.length > 0) {
+                updateTab(tab.id, { predefinedRoutingKeys: [] });
+            }
+          }
+        }
+      });
+    }
+  }, [config]);
 
   function toggleConn(name: string) {
     setExpanded((prev) => {
@@ -58,6 +81,15 @@ export function Sidebar() {
     setOpening(true);
     const tabId = uuidv4();
     const label = `${opts.conn.name} / ${opts.targetName} [${opts.mode === "read" ? "R" : "W"}]`;
+    
+    let predefinedRoutingKeys: string[] | undefined = undefined;
+    if (opts.targetType === "exchange") {
+      const ex = opts.conn.exchanges.find(e => e.name === opts.targetName);
+      if (ex && ex.routing_keys) {
+        predefinedRoutingKeys = ex.routing_keys;
+      }
+    }
+
     try {
       await invoke("open_tab", {
         tabId,
@@ -77,6 +109,7 @@ export function Sidebar() {
         mode: opts.mode,
         ackMode: opts.ackMode,
         label,
+        predefinedRoutingKeys,
       });
       setPending(null);
     } catch (e) {
@@ -161,7 +194,8 @@ export function Sidebar() {
           Loading…
         </div>
       ) : (
-        config.connections.map((conn) => (
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          {config.connections.map((conn) => (
           <div key={conn.name} className="conn-item">
             <button className="conn-name" onClick={() => toggleConn(conn.name)}>
               <span className="arrow" style={{ transform: expanded.has(conn.name) ? "rotate(90deg)" : "rotate(0deg)" }}>
@@ -226,6 +260,8 @@ export function Sidebar() {
             )}
           </div>
         ))
+        }
+        </div>
       )}
 
       {/* Queue mode picker modal */}
@@ -302,7 +338,7 @@ export function Sidebar() {
                   })
                 }
               >
-                {opening ? "Connecting…" : "ok"}
+                {opening ? "Connecting…" : "Ok"}
               </button>
             </div>
           </div>
