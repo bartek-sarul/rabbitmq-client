@@ -260,7 +260,7 @@ export function Sidebar() {
                   disabled={pending.targetType === "exchange"}
                 />
                 <div className="option-details">
-                  <div className="option-title">Read Mode (Consumer)</div>
+                  <div className="option-title">Consumer (read mode)</div>
                   <div className="option-desc">
                     {pending.targetType === "exchange" 
                       ? "Cannot consume directly from an exchange." 
@@ -277,7 +277,7 @@ export function Sidebar() {
                   onChange={() => setModeChoice("write")}
                 />
                 <div className="option-details">
-                  <div className="option-title">Write Mode (Publisher)</div>
+                  <div className="option-title">Publisher (write mode)</div>
                   <div className="option-desc">
                     {pending.targetType === "exchange"
                       ? "Publish messages directly to this exchange."

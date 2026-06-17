@@ -8,6 +8,7 @@ use tab_manager::TabManager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(TabManager::new())
         .invoke_handler(tauri::generate_handler![
             commands::load_config_cmd,
@@ -23,6 +24,7 @@ pub fn run() {
             commands::save_config_struct,
             commands::parse_yaml_config,
             commands::show_config_in_file_manager,
+            commands::exit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -43,7 +43,9 @@ export interface Tab {
   contentType?: string;
   deliveryMode?: number;
   correlationId?: string;
+  autoCorrelationId?: boolean;
   messageId?: string;
+  autoMessageId?: boolean;
   headers?: string;
 }
 

@@ -16,6 +16,11 @@ pub struct SendProperties {
     pub message_id: Option<String>,
 }
 
+#[tauri::command]
+pub fn exit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 #[derive(serde::Serialize)]
 pub struct ConsumerSessionInfo {
     pub folder_path: String,

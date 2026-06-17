@@ -52,7 +52,7 @@ export function TabBar() {
             className={`badge ${tab.mode === "read" ? "read" : "write"}`}
             style={{ fontSize: "8px", fontWeight: "800", padding: "2px 4px", borderRadius: "3px" }}
           >
-            {tab.mode === "read" ? "READ" : "WRITE"}
+            {tab.mode === "read" ? "CONSUMER" : "PUBLISHER"}
           </span>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
