@@ -9,7 +9,6 @@ import { MessageListenerManager } from "./components/MessageListenerManager";
 function App() {
   const tabs = useAppStore((s) => s.tabs);
   const activeTabId = useAppStore((s) => s.activeTabId);
-  const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
 
   return (
     <div className="app-layout">
