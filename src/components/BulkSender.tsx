@@ -45,6 +45,7 @@ export function BulkSender({
   const [bulkFiles, setBulkFiles] = useState<BulkFile[]>([]);
   const [bulkSending, setBulkSending] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'sent' | 'error'>('all');
+  const [bulkDelayMs, setBulkDelayMs] = useState(0);
   const abortRef = useRef<boolean>(false);
   const updateTab = useAppStore((s) => s.updateTab);
 
@@ -120,6 +121,10 @@ export function BulkSender({
         currentFiles[i] = { ...f, status: 'sent' };
         if (autoCorrelationId) currentCorrId = uuidv4();
         if (autoMessageId) currentMsgId = uuidv4();
+
+        if (bulkDelayMs > 0 && i < currentFiles.length - 1 && !abortRef.current) {
+          await new Promise(r => setTimeout(r, bulkDelayMs));
+        }
       } catch (e) {
         currentFiles[i] = { ...f, status: 'error', errorMsg: String(e) };
       }
@@ -163,13 +168,27 @@ export function BulkSender({
               ))}
             </div>
           </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button type="button" className="btn-primary" onClick={handleBulkSelect} disabled={bulkSending} style={{ padding: "4px 12px", fontSize: "12px", height: "auto" }}>
-              Select files
-            </button>
-            <button type="button" className="btn-secondary" onClick={() => setBulkFiles([])} disabled={bulkSending || bulkFiles.length === 0} style={{ padding: "4px 12px", fontSize: "12px", height: "auto" }}>
-              Clear
-            </button>
+          <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <label style={{ fontSize: "12px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>Delay (ms):</label>
+              <input
+                type="number"
+                min="0"
+                step="50"
+                value={bulkDelayMs}
+                onChange={(e) => setBulkDelayMs(Math.max(0, parseInt(e.target.value) || 0))}
+                disabled={bulkSending}
+                style={{ width: "70px", padding: "4px 8px", fontSize: "12px", boxSizing: "border-box" }}
+              />
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button type="button" className="btn-primary" onClick={handleBulkSelect} disabled={bulkSending} style={{ padding: "4px 12px", fontSize: "12px", height: "auto" }}>
+                Select files
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setBulkFiles([])} disabled={bulkSending || bulkFiles.length === 0} style={{ padding: "4px 12px", fontSize: "12px", height: "auto" }}>
+                Clear
+              </button>
+            </div>
           </div>
         </div>
         

@@ -10,6 +10,7 @@ interface AppStore {
   removeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
   addMessage: (tabId: string, msg: Message) => void;
+  setMessages: (tabId: string, msgs: Message[]) => void;
   clearMessages: (tabId: string) => void;
   updateTab: (tabId: string, updates: Partial<Tab>) => void;
 }
@@ -47,6 +48,15 @@ export const useAppStore = create<AppStore>((set) => ({
         [tabId]: [msg, ...(s.messages[tabId] ?? [])],
       },
       tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, lastReceived: Date.now() } : t)),
+    })),
+
+  setMessages: (tabId, msgs) =>
+    set((s) => ({
+      messages: {
+        ...s.messages,
+        [tabId]: msgs,
+      },
+      tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, lastReceived: msgs.length > 0 ? Date.now() : t.lastReceived } : t)),
     })),
 
   clearMessages: (tabId) =>

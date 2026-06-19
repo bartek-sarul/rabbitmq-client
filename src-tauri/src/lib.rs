@@ -17,6 +17,8 @@ pub fn run() {
             commands::close_tab,
             commands::send_message,
             commands::start_consumer,
+            commands::generate_default_folder_path,
+            commands::load_folder_messages,
             commands::stop_consumer,
             commands::open_folder,
             commands::read_message_file,

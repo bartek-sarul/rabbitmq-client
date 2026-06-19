@@ -905,7 +905,7 @@ button:disabled {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 480px;
+  max-width: 640px;
   padding: 28px;
   box-shadow: var(--shadow-lg);
   display: flex;
@@ -929,7 +929,7 @@ button:disabled {
 }
 
 /* Select option cards */
-.mode-picker-row label {
+.mode-picker-row .mode-card {
   display: flex;
   align-items: flex-start;
   gap: 14px;
@@ -941,12 +941,12 @@ button:disabled {
   transition: all var(--transition-fast);
 }
 
-.mode-picker-row label:hover {
+.mode-picker-row .mode-card:hover {
   background-color: var(--bg-hover);
   border-color: var(--text-muted);
 }
 
-.mode-picker-row label:has(input:checked) {
+.mode-picker-row .mode-card:has(input[type="radio"]:checked) {
   background-color: var(--accent-glow);
   border-color: var(--accent-color);
   box-shadow: var(--shadow-glow);

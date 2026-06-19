@@ -55,7 +55,8 @@ export interface Message {
   id: string;
   timestamp: string;
   filePath: string;
-  bodyPreview: string;
+  body: string;
+  headersStr: string;
   properties: {
     content_type: string | null;
     delivery_mode: number | null;

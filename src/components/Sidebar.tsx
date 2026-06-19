@@ -4,6 +4,7 @@ import { AppConfig, ConnectionDef, TargetType, TabMode, AckMode } from "../types
 import { useAppStore } from "../store/useAppStore";
 import { v4 as uuidv4 } from "uuid";
 import { ConfigEditorModal } from "./ConfigEditorModal";
+import { open } from "@tauri-apps/plugin-dialog";
 
 interface OpenTabOptions {
   conn: ConnectionDef;
@@ -11,6 +12,7 @@ interface OpenTabOptions {
   targetType: TargetType;
   mode: TabMode;
   ackMode: AckMode;
+  folderPath?: string;
 }
 
 export function Sidebar() {
@@ -21,6 +23,8 @@ export function Sidebar() {
   const [modeChoice, setModeChoice] = useState<TabMode>("read");
   const [ackChoice, setAckChoice] = useState<AckMode>("ack");
   const [opening, setOpening] = useState(false);
+  const [folderPath, setFolderPath] = useState<string>("");
+  const [useLastFolder, setUseLastFolder] = useState<boolean>(true);
 
   const addTab = useAppStore((s) => s.addTab);
 
@@ -28,6 +32,7 @@ export function Sidebar() {
 
   const tabs = useAppStore((s) => s.tabs);
   const updateTab = useAppStore((s) => s.updateTab);
+  const setActiveTab = useAppStore((s) => s.setActiveTab);
 
   const fetchConfig = () => {
     invoke<AppConfig>("load_config_cmd")
@@ -59,6 +64,84 @@ export function Sidebar() {
     }
   }, [config]);
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && pending !== null && !showConfigEditor) {
+        setPending(null);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [pending, showConfigEditor]);
+
+  useEffect(() => {
+    async function initFolder() {
+      if (!pending || modeChoice !== "read") return;
+      const stored = localStorage.getItem(`last_folder_${pending.conn.name}_${pending.targetName}`);
+      if (stored) {
+        setUseLastFolder(true);
+        setFolderPath(stored);
+      } else {
+        setUseLastFolder(false);
+        try {
+          const defaultPath = await invoke<string>("generate_default_folder_path", {
+            connName: pending.conn.name,
+            targetName: pending.targetName
+          });
+          setFolderPath(defaultPath);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    initFolder();
+  }, [pending?.conn.name, pending?.targetName, modeChoice]);
+
+  async function handleCheckboxChange(checked: boolean) {
+    setUseLastFolder(checked);
+    if (!pending) return;
+    if (checked) {
+      const stored = localStorage.getItem(`last_folder_${pending.conn.name}_${pending.targetName}`);
+      if (stored) setFolderPath(stored);
+    } else {
+      try {
+        const defaultPath = await invoke<string>("generate_default_folder_path", {
+          connName: pending.conn.name,
+          targetName: pending.targetName
+        });
+        setFolderPath(defaultPath);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }
+
+  async function handlePickFolder() {
+    try {
+      const selected = await open({ directory: true });
+      if (selected && typeof selected === "string") {
+        setFolderPath(selected);
+        setUseLastFolder(false);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function handleNewLocation() {
+    if (!pending) return;
+    try {
+      const defaultPath = await invoke<string>("generate_default_folder_path", {
+        connName: pending.conn.name,
+        targetName: pending.targetName
+      });
+      setFolderPath(defaultPath);
+      setUseLastFolder(false);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   function toggleConn(name: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -68,6 +151,7 @@ export function Sidebar() {
   }
 
   function selectTarget(conn: ConnectionDef, targetName: string, targetType: TargetType) {
+
     setPending({ conn, targetName, targetType });
     if (targetType === "exchange") {
       setModeChoice("write");
@@ -110,6 +194,7 @@ export function Sidebar() {
         ackMode: opts.ackMode,
         label,
         predefinedRoutingKeys,
+        folderPath: opts.folderPath,
       });
       setPending(null);
     } catch (e) {
@@ -266,7 +351,7 @@ export function Sidebar() {
 
       {/* Queue mode picker modal */}
       {pending && (
-        <div className="mode-picker-overlay" onClick={() => setPending(null)}>
+        <div className="mode-picker-overlay">
           <div className="mode-picker" onClick={(e) => e.stopPropagation()}>
             <div className="mode-picker-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               {pending.targetType === "exchange" ? (
@@ -286,41 +371,80 @@ export function Sidebar() {
             </div>
 
             <div className="mode-picker-row">
-              <label style={pending.targetType === "exchange" ? { opacity: 0.5, cursor: "not-allowed" } : undefined}>
-                <input
-                  type="radio"
-                  name="mode"
-                  value="read"
-                  checked={modeChoice === "read"}
-                  onChange={() => setModeChoice("read")}
-                  disabled={pending.targetType === "exchange"}
-                />
-                <div className="option-details">
-                  <div className="option-title">Consumer (read mode)</div>
-                  <div className="option-desc">
-                    {pending.targetType === "exchange" 
-                      ? "Cannot consume directly from an exchange." 
-                      : "Subscribe and stream messages from this queue in real-time."}
+              <div 
+                className="mode-card" 
+                style={pending.targetType === "exchange" ? { opacity: 0.5, cursor: "not-allowed", flexDirection: "column" } : { flexDirection: "column" }}
+                onClick={() => {
+                  if (pending.targetType !== "exchange") setModeChoice("read");
+                }}
+              >
+                <div style={{ display: "flex", gap: "14px", width: "100%" }}>
+                  <input
+                    type="radio"
+                    name="mode"
+                    value="read"
+                    checked={modeChoice === "read"}
+                    readOnly
+                    style={{ pointerEvents: "none" }}
+                  />
+                  <div className="option-details">
+                    <div className="option-title">Consumer (read mode)</div>
+                    <div className="option-desc">
+                      {pending.targetType === "exchange" 
+                        ? "Cannot consume directly from an exchange." 
+                        : "Subscribe and stream messages from this queue in real-time."}
+                    </div>
                   </div>
                 </div>
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="mode"
-                  value="write"
-                  checked={modeChoice === "write"}
-                  onChange={() => setModeChoice("write")}
-                />
-                <div className="option-details">
-                  <div className="option-title">Publisher (write mode)</div>
-                  <div className="option-desc">
-                    {pending.targetType === "exchange"
-                      ? "Publish messages directly to this exchange."
-                      : "Publish new messages directly into this queue."}
+
+                {/* Always render folder picker, but disabled if not in read mode */}
+                <div 
+                  style={{ 
+                    marginTop: "16px", 
+                    marginLeft: "28px", 
+                    opacity: modeChoice === "read" ? 1 : 0.4, 
+                    pointerEvents: modeChoice === "read" ? "auto" : "none",
+                    width: "calc(100% - 28px)"
+                  }}
+                  onClick={(e) => e.stopPropagation()} // Prevent clicking folder inputs from triggering the mode-card click
+                >
+                  <strong style={{ fontSize: "12px", display: "block", marginBottom: "8px" }}>Message Storage Folder</strong>
+                  <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", marginBottom: "8px" }}>
+                    <input type="checkbox" checked={useLastFolder} onChange={(e) => handleCheckboxChange(e.target.checked)} />
+                    Use last folder for this queue
+                  </label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input type="text" value={folderPath} readOnly disabled={useLastFolder} className="input" style={{ flex: 1, fontSize: "12px", padding: "4px 8px", opacity: useLastFolder ? 0.6 : 1 }} />
+                    <button type="button" className="btn-secondary" onClick={handleNewLocation} disabled={useLastFolder} style={{ padding: "4px 12px", fontSize: "12px", opacity: useLastFolder ? 0.6 : 1 }}>
+                      New location
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={handlePickFolder} disabled={useLastFolder} style={{ padding: "4px 12px", fontSize: "12px", opacity: useLastFolder ? 0.6 : 1 }}>
+                      Pick folder
+                    </button>
                   </div>
                 </div>
-              </label>
+              </div>
+
+              <div className="mode-card" onClick={() => setModeChoice("write")}>
+                <div style={{ display: "flex", gap: "14px", width: "100%" }}>
+                  <input
+                    type="radio"
+                    name="mode"
+                    value="write"
+                    checked={modeChoice === "write"}
+                    readOnly
+                    style={{ pointerEvents: "none" }}
+                  />
+                  <div className="option-details">
+                    <div className="option-title">Publisher (write mode)</div>
+                    <div className="option-desc">
+                      {pending.targetType === "exchange"
+                        ? "Publish messages directly to this exchange."
+                        : "Publish new messages directly into this queue."}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="mode-picker-actions">
@@ -328,17 +452,21 @@ export function Sidebar() {
               <button
                 className="btn-primary"
                 disabled={opening}
-                onClick={() =>
+                onClick={() => {
+                  if (modeChoice === "read" && folderPath) {
+                    localStorage.setItem(`last_folder_${pending.conn.name}_${pending.targetName}`, folderPath);
+                  }
                   openTab({
                     conn: pending.conn,
                     targetName: pending.targetName,
                     targetType: pending.targetType,
                     mode: modeChoice,
                     ackMode: ackChoice,
-                  })
-                }
+                    folderPath: modeChoice === "read" ? folderPath : undefined
+                  });
+                }}
               >
-                {opening ? "Connecting…" : "Ok"}
+                {opening ? "Connecting…" : "OK"}
               </button>
             </div>
           </div>

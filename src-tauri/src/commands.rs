@@ -240,15 +240,7 @@ pub async fn send_message(
 }
 
 #[tauri::command]
-pub async fn start_consumer(
-    tab_id: String,
-    ack_mode: AckMode,
-    state: State<'_, TabManager>,
-    app_handle: AppHandle,
-) -> Result<ConsumerSessionInfo, String> {
-    let (conn_url, conn_name, target_name, cancel) = state.inner().start_consumer_session(&tab_id, ack_mode.clone())?;
-    let conn_url = resolve_amqp_url(&conn_url)?;
-
+pub fn generate_default_folder_path(conn_name: String, target_name: String) -> Result<String, String> {
     let config = load_config().map_err(|e| format!("Failed to load config: {e}"))?;
     let base_path = config.save_path.ok_or_else(|| {
         "save_path is not configured in ~/.rabbit-client.yaml".to_string()
@@ -263,10 +255,114 @@ pub async fn start_consumer(
         .collect();
 
     let path = std::path::PathBuf::from(base_path).join(&clean_folder_name);
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct PartialMessage {
+    pub id: String,
+    pub timestamp: String,
+    pub filePath: Option<String>,
+    pub body: Option<String>,
+    pub headersStr: Option<String>,
+    pub properties: Option<serde_json::Value>,
+}
+
+#[tauri::command]
+pub async fn load_folder_messages(folder_path: String) -> Result<Vec<serde_json::Value>, String> {
+    let path = std::path::PathBuf::from(&folder_path);
+    if !path.exists() || !path.is_dir() {
+        return Ok(vec![]);
+    }
+
+    let mut entries = tokio::fs::read_dir(path).await.map_err(|e| e.to_string())?;
+    let mut msgs = vec![];
+
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let p = entry.path();
+        if p.is_file() && p.extension().and_then(|s| s.to_str()) == Some("json") {
+            match tokio::fs::read_to_string(&p).await {
+                Ok(content) => {
+                    match serde_json::from_str::<serde_json::Value>(&content) {
+                        Ok(mut parsed) => {
+                            if let Some(obj) = parsed.as_object_mut() {
+                                obj.insert("filePath".to_string(), serde_json::Value::String(p.to_string_lossy().to_string()));
+                                let headers_str = obj.get("headers").and_then(|h| h.as_str()).unwrap_or_default().to_string();
+                                obj.insert("headersStr".to_string(), serde_json::Value::String(headers_str));
+                            }
+                            msgs.push(parsed);
+                        }
+                        Err(e) => eprintln!("Failed to parse JSON for {:?}: {}", p, e),
+                    }
+                }
+                Err(e) => eprintln!("Failed to read file {:?}: {}", p, e),
+            }
+        }
+    }
+
+    // Sort by timestamp desc
+    msgs.sort_by(|a, b| {
+        let ts_a = a.get("timestamp").and_then(|v| v.as_str()).unwrap_or("");
+        let ts_b = b.get("timestamp").and_then(|v| v.as_str()).unwrap_or("");
+        ts_b.cmp(ts_a)
+    });
+
+    msgs.truncate(500);
+
+    Ok(msgs)
+}
+
+#[tauri::command]
+pub async fn debug_load_folder(folder_path: String) -> Result<String, String> {
+    let path = std::path::PathBuf::from(&folder_path);
+    if !path.exists() {
+        return Ok("Path does not exist".to_string());
+    }
+    if !path.is_dir() {
+        return Ok("Path is not a directory".to_string());
+    }
+
+    let mut entries = tokio::fs::read_dir(path).await.map_err(|e| e.to_string())?;
+    let mut count = 0;
+    let mut parsed_count = 0;
+    let mut errs = vec![];
+
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let p = entry.path();
+        if p.is_file() && p.extension().and_then(|s| s.to_str()) == Some("json") {
+            count += 1;
+            match tokio::fs::read_to_string(&p).await {
+                Ok(content) => {
+                    match serde_json::from_str::<serde_json::Value>(&content) {
+                        Ok(_) => parsed_count += 1,
+                        Err(e) => errs.push(format!("Parse err for {:?}: {}", p.file_name(), e)),
+                    }
+                }
+                Err(e) => errs.push(format!("Read err for {:?}: {}", p.file_name(), e)),
+            }
+        }
+    }
+
+    Ok(format!("Total json files: {}, Parsed: {}. Errors: {:?}", count, parsed_count, errs))
+}
+
+#[tauri::command]
+pub async fn start_consumer(
+    tab_id: String,
+    ack_mode: AckMode,
+    folder_path: String,
+    state: State<'_, TabManager>,
+    app_handle: AppHandle,
+) -> Result<ConsumerSessionInfo, String> {
+    let (conn_url, conn_name, target_name, cancel) = state.inner().start_consumer_session(&tab_id, ack_mode.clone())?;
+    let conn_url = resolve_amqp_url(&conn_url)?;
+
+    let path = std::path::PathBuf::from(&folder_path);
     std::fs::create_dir_all(&path)
         .map_err(|e| format!("Failed to create save directory: {e}"))?;
 
     let save_dir = path.clone();
+    let folder_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string();
     let folder_path_str = path.to_string_lossy().to_string();
 
     let event_name = format!("msg-{tab_id}");
@@ -370,17 +466,12 @@ pub async fn start_consumer(
                                     eprintln!("Failed to save message to disk: {e}");
                                 }
 
-                                let body_preview = if body.len() > 120 {
-                                    format!("{}...", &body[..120])
-                                } else {
-                                    body.clone()
-                                };
-
                                 let preview_payload = serde_json::json!({
                                     "id": msg_id,
                                     "timestamp": timestamp,
                                     "filePath": file_path.to_string_lossy().to_string(),
-                                    "bodyPreview": body_preview,
+                                    "body": body,
+                                    "headersStr": headers_str,
                                     "properties": {
                                         "content_type": delivery.properties.content_type()
                                             .as_ref().map(|s| s.as_str().to_string()),
@@ -433,7 +524,7 @@ pub async fn start_consumer(
 
     Ok(ConsumerSessionInfo {
         folder_path: folder_path_str,
-        folder_name: clean_folder_name,
+        folder_name,
     })
 }
 
