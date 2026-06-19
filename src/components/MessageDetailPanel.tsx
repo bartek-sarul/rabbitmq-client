@@ -1,6 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useDeferredValue, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Message } from "../types";
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
+import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
+import xml from 'react-syntax-highlighter/dist/esm/languages/hljs/xml';
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+
+function escapeHtml(unsafe: string) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+SyntaxHighlighter.registerLanguage('json', json);
+SyntaxHighlighter.registerLanguage('xml', xml);
 
 interface Props {
   message: Message;
@@ -26,6 +42,115 @@ export function MessageDetailPanel({ message, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"payload" | "headers" | "properties">("payload");
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Custom 300ms debounce
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Reset index when query changes
+  useEffect(() => {
+    setCurrentMatchIndex(debouncedSearchQuery.length >= 2 ? 1 : 0);
+  }, [debouncedSearchQuery]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        if (activeTab === "payload") {
+          e.preventDefault();
+          searchInputRef.current?.focus();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab]);
+
+  // Memoize properties to avoid re-parsing on every keystroke
+  const isMessageJson = useMemo(() => {
+    if (!fullMessage) return false;
+    if (fullMessage.properties.content_type?.includes("json")) return true;
+    try {
+      JSON.parse(fullMessage.body);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [fullMessage]);
+
+  const isMessageXml = useMemo(() => {
+    if (!fullMessage) return false;
+    if (fullMessage.properties.content_type?.includes("xml")) return true;
+    const body = fullMessage.body.trim();
+    return body.startsWith("<") && body.endsWith(">");
+  }, [fullMessage]);
+
+  const bodyText = useMemo(() => {
+    if (!fullMessage) return "";
+    if (isMessageJson) {
+      try {
+        const parsed = JSON.parse(fullMessage.body);
+        return JSON.stringify(parsed, null, 2);
+      } catch {
+        return fullMessage.body;
+      }
+    }
+    return fullMessage.body;
+  }, [fullMessage, isMessageJson]);
+
+  const bodyLines = useMemo(() => bodyText.split('\n'), [bodyText]);
+
+  // Generate ultra-fast raw HTML for search highlights to bypass React VDOM limits
+  const { html: highlightedHtml, count: matchCount } = useMemo(() => {
+    if (!debouncedSearchQuery || debouncedSearchQuery.length < 2) return { html: null, count: 0 };
+    
+    // Escape regex special chars
+    const safeRegexQuery = debouncedSearchQuery.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+    const regex = new RegExp(`(${safeRegexQuery})`, 'gi');
+    
+    let count = 0;
+    // Inject invisible control characters (\u0001 and \u0002) around matches
+    const htmlWithMarkers = bodyText.replace(regex, (match) => {
+      count++;
+      return `\u0001${count}\u0002${match}\u0003`;
+    });
+    
+    // Safely escape the HTML
+    const escaped = escapeHtml(htmlWithMarkers);
+    
+    // Swap the control characters back into <mark> tags
+    const finalHtml = escaped
+      .replace(/\u0001(\d+)\u0002/g, '<mark id="search-match-$1" class="search-match">')
+      .replace(/\u0003/g, '</mark>');
+      
+    return { html: finalHtml, count };
+  }, [bodyText, debouncedSearchQuery]);
+
+  const handleNextMatch = () => setCurrentMatchIndex(prev => prev < matchCount ? prev + 1 : 1);
+  const handlePrevMatch = () => setCurrentMatchIndex(prev => prev > 1 ? prev - 1 : matchCount);
+
+  // Auto-scroll to active match
+  useEffect(() => {
+    if (matchCount > 0 && currentMatchIndex > 0) {
+      const el = document.getElementById(`search-match-${currentMatchIndex}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [currentMatchIndex, matchCount, highlightedHtml]);
+
+  const getLanguage = () => {
+    if (isMessageJson) return "json";
+    if (isMessageXml) return "xml";
+    return "text";
+  };
 
   useEffect(() => {
     let active = true;
@@ -60,27 +185,14 @@ export function MessageDetailPanel({ message, onClose }: Props) {
       .catch(() => {});
   }
 
-  // Format JSON beautifully if it is JSON
-  function getFormattedBody(): string {
-    if (!fullMessage) return "";
-    try {
-      const parsed = JSON.parse(fullMessage.body);
-      return JSON.stringify(parsed, null, 2);
-    } catch {
-      return fullMessage.body;
-    }
+  function doCopy(text: string, section: string) {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        setCopiedSection(section);
+        setTimeout(() => setCopiedSection(null), 1500);
+      })
+      .catch(() => {});
   }
-
-  const isJson = () => {
-    if (!fullMessage) return false;
-    if (fullMessage.properties.content_type?.includes("json")) return true;
-    try {
-      JSON.parse(fullMessage.body);
-      return true;
-    } catch {
-      return false;
-    }
-  };
 
   return (
     <div style={{
@@ -156,11 +268,60 @@ export function MessageDetailPanel({ message, onClose }: Props) {
             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px", minHeight: 0 }}>
             {activeTab === "payload" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", height: "100%" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minHeight: 0 }}>
+                {matchCount > 0 && currentMatchIndex > 0 && (
+                  <style>{`
+                    .search-match { background-color: rgba(243, 107, 40, 0.3) !important; color: inherit !important; outline: 1px solid rgba(243, 107, 40, 0.5); border-radius: 2px; }
+                    #search-match-${currentMatchIndex} { background-color: var(--accent-color) !important; color: #fff !important; outline: 2px solid var(--accent-color); z-index: 1; position: relative; }
+                  `}</style>
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>{isJson() ? "JSON Payload" : "Raw Payload"}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>{isMessageJson ? "JSON Payload" : "Raw Payload"}</span>
+                    <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: "6px" }}>
+                          <circle cx="11" cy="11" r="8"></circle>
+                          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input 
+                          ref={searchInputRef}
+                          type="text" 
+                          placeholder="Search (Cmd+F)" 
+                          className="input" 
+                          value={searchQuery} 
+                          onChange={(e) => setSearchQuery(e.target.value)} 
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleNextMatch();
+                            } else if (e.key === 'Escape') {
+                              if (searchQuery) {
+                                e.stopPropagation();
+                                setSearchQuery('');
+                              }
+                            }
+                          }}
+                          style={{ fontSize: "12px", padding: "4px 8px 4px 22px", width: "160px" }} 
+                        />
+                      </div>
+                      {matchCount > 0 && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "var(--text-muted)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "4px", padding: "2px 6px" }}>
+                          <span style={{ minWidth: "32px", textAlign: "center" }}>{currentMatchIndex} / {matchCount}</span>
+                          <div style={{ display: "flex", gap: "2px", borderLeft: "1px solid var(--border-color)", paddingLeft: "6px" }}>
+                            <button onClick={handlePrevMatch} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px", color: "inherit", display: "flex" }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                            </button>
+                            <button onClick={handleNextMatch} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px", color: "inherit", display: "flex" }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button
                       className={`btn-secondary ${copiedSection === "body" ? "copied" : ""}`}
@@ -169,11 +330,11 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                     >
                       {copiedSection === "body" ? "Copied ✓" : "Copy Raw"}
                     </button>
-                    {isJson() && (
+                    {isMessageJson && (
                       <button
                         className={`btn-secondary ${copiedSection === "body_json" ? "copied" : ""}`}
                         style={{ padding: "4px 8px", fontSize: "12px", height: "auto" }}
-                        onClick={() => doCopy(getFormattedBody(), "body_json")}
+                        onClick={() => doCopy(bodyText, "body_json")}
                       >
                         {copiedSection === "body_json" ? "Copied ✓" : "Copy JSON"}
                       </button>
@@ -181,21 +342,32 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                   </div>
                 </div>
                 <div style={{ position: "relative", flexGrow: 1, minHeight: "200px" }}>
-                  <pre style={{ 
-                    position: "absolute", top: 0, left: 0, right: 0, bottom: 0, 
-                    margin: 0, padding: "12px", backgroundColor: "var(--bg-secondary)", 
-                    borderRadius: "6px", border: "1px solid var(--border-color)", 
-                    overflowY: "auto", fontSize: "12px", whiteSpace: "pre-wrap", 
-                    wordBreak: "break-all", color: "var(--text-primary)" 
-                  }}>
-                    {isJson() ? getFormattedBody() : fullMessage.body}
-                  </pre>
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+                    {bodyText.length > 50000 || highlightedHtml ? (
+                      <pre 
+                        style={{ margin: 0, height: "100%", borderRadius: "6px", padding: "12px", fontSize: "12px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)", overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all", color: "var(--text-primary)" }}
+                        dangerouslySetInnerHTML={highlightedHtml ? { __html: highlightedHtml } : undefined}
+                      >
+                        {!highlightedHtml ? bodyText : undefined}
+                      </pre>
+                    ) : (
+                      <SyntaxHighlighter 
+                        language={getLanguage()} 
+                        style={atomOneDark} 
+                        customStyle={{ margin: 0, minHeight: "100%", height: "100%", borderRadius: "6px", fontSize: "12px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)", overflow: "auto" }}
+                        wrapLines={true}
+                        wrapLongLines={true}
+                      >
+                        {bodyText}
+                      </SyntaxHighlighter>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
             {activeTab === "headers" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", height: "100%" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minHeight: 0 }}>
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <button
                     className={`btn-secondary ${copiedSection === "headers" ? "copied" : ""}`}
@@ -219,7 +391,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
             )}
 
             {activeTab === "properties" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", height: "100%" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minHeight: 0 }}>
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <button
                     className={`btn-secondary ${copiedSection === "properties" ? "copied" : ""}`}
