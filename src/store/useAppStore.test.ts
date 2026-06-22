@@ -109,7 +109,8 @@ describe("useAppStore", () => {
       id: "msg-1",
       timestamp: "2026-06-06T12:00:00Z",
       filePath: "/tmp/msg-1.json",
-      bodyPreview: "test",
+      body: "test",
+      headersStr: "",
       properties: {
         content_type: null,
         delivery_mode: null,
@@ -169,7 +170,8 @@ describe("useAppStore", () => {
       id: "msg-1",
       timestamp: "2026-06-06T12:00:00Z",
       filePath: "/tmp/msg-1.json",
-      bodyPreview: "first",
+      body: "first",
+      headersStr: "",
       properties: {
         content_type: null,
         delivery_mode: null,
@@ -181,7 +183,8 @@ describe("useAppStore", () => {
       id: "msg-2",
       timestamp: "2026-06-06T12:01:00Z",
       filePath: "/tmp/msg-2.json",
-      bodyPreview: "second",
+      body: "second",
+      headersStr: "",
       properties: {
         content_type: null,
         delivery_mode: null,
@@ -226,7 +229,8 @@ describe("useAppStore", () => {
       id: "msg-1",
       timestamp: "2026-06-06T12:00:00Z",
       filePath: "/tmp/msg-1.json",
-      bodyPreview: "test",
+      body: "test",
+      headersStr: "",
       properties: {
         content_type: null,
         delivery_mode: null,

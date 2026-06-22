@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useDeferredValue, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Message } from "../types";
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -105,8 +105,6 @@ export function MessageDetailPanel({ message, onClose }: Props) {
     return fullMessage.body;
   }, [fullMessage, isMessageJson]);
 
-  const bodyLines = useMemo(() => bodyText.split('\n'), [bodyText]);
-
   // Generate ultra-fast raw HTML for search highlights to bypass React VDOM limits
   const { html: highlightedHtml, count: matchCount } = useMemo(() => {
     if (!debouncedSearchQuery || debouncedSearchQuery.length < 2) return { html: null, count: 0 };
@@ -175,15 +173,6 @@ export function MessageDetailPanel({ message, onClose }: Props) {
     load();
     return () => { active = false; };
   }, [message.id, message.filePath]);
-
-  function doCopy(text: string, section: string) {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        setCopiedSection(section);
-        setTimeout(() => setCopiedSection(null), 1500);
-      })
-      .catch(() => {});
-  }
 
   function doCopy(text: string, section: string) {
     navigator.clipboard.writeText(text)

@@ -32,7 +32,6 @@ export function Sidebar() {
 
   const tabs = useAppStore((s) => s.tabs);
   const updateTab = useAppStore((s) => s.updateTab);
-  const setActiveTab = useAppStore((s) => s.setActiveTab);
 
   const fetchConfig = () => {
     invoke<AppConfig>("load_config_cmd")
