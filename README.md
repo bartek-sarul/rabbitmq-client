@@ -25,6 +25,12 @@ This document serves as the complete architectural blueprint and design specific
 ![Consumer Stream UI](docs/screenshots/03-consumer-tab.png)
 * **ACK / NACK Control**: Choose between **Consume (ACK)** which permanently dequeues messages, or **Peek (NACK)** which reads them while leaving them on the broker.
 * **Live Streaming & UI**: Split-pane layout. Left side shows a streaming list of incoming messages with timestamps. Right side is a detailed inspector.
+* **High-Performance Payload Search**: 
+  * The message payload inspector features a blazing-fast, case-insensitive text search.
+  * To bypass React's Virtual DOM rendering bottleneck on massive multi-megabyte JSON files, it uses a custom string-injection engine (`dangerouslySetInnerHTML`) mapped via invisible unicode control characters (`\u0001`, `\u0002`, `\u0003`) to safely parse, escape, and wrap exact matches in `<mark>` HTML tags.
+  * Features a native `Cmd/Ctrl + F` shortcut, a 300ms debounce loop to preserve UI responsiveness during typing, active occurrence tracking (e.g. `2 / 52`), and `Enter` key or Up/Down UI buttons to navigate matches.
+  * Smart `Escape` flow: clears search input text first -> drops input focus -> closes the side panel completely.
+  * The active match is instantly highlighted via a targeted dynamic CSS `<style>` block injection. This completely avoids expensive full-document regeneration during next/prev occurrence navigation.
 * **Scroll-Lock**: Toggle scroll-freeze to read incoming bursts of messages without the screen jumping.
 * **Header & Property Inspector**: Shows `Content-Type`, `Delivery Mode`, `Correlation ID`, `Message ID`, and Custom Headers.
 * **Disk Persistence**: Saves all incoming messages cleanly to disk as formatted JSON payloads in a designated folder (e.g. `YYYY-MM-DD_HH-MM-SS_Local-Host_my-queue`). "Open Folder" button natively opens the system file explorer directly to that log folder.
