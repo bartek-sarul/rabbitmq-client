@@ -94,11 +94,12 @@ export function WriteTab({ tab }: Props) {
         },
       });
       setStatus({ ok: true, msg: "Message sent." });
-      
-      const updates: any = { body: "" };
+      const updates: any = {};
       if (autoCorrelationId) updates.correlationId = uuidv4();
       if (autoMessageId) updates.messageId = uuidv4();
-      updateTab(tab.id, updates);
+      if (Object.keys(updates).length > 0) {
+        updateTab(tab.id, updates);
+      }
     } catch (e) {
       setStatus({ ok: false, msg: String(e) });
     } finally {

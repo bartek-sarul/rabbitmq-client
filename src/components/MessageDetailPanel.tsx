@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Message } from "../types";
+import { Message, Tab } from "../types";
+import { useAppStore } from "../store/useAppStore";
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
 import xml from 'react-syntax-highlighter/dist/esm/languages/hljs/xml';
@@ -46,6 +47,47 @@ export function MessageDetailPanel({ message, onClose }: Props) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const tabs = useAppStore(s => s.tabs);
+  const updateTab = useAppStore(s => s.updateTab);
+  const setActiveTabStore = useAppStore(s => s.setActiveTab);
+
+  const writerTabs = tabs.filter(t => t.mode === "write");
+  const [showCopyToWriter, setShowCopyToWriter] = useState(false);
+  const [copyMode, setCopyMode] = useState<"payload" | "all">("payload");
+  const [selectedWriterId, setSelectedWriterId] = useState<string>("");
+
+  useEffect(() => {
+    if (writerTabs.length > 0 && (!selectedWriterId || !writerTabs.find(t => t.id === selectedWriterId))) {
+      setSelectedWriterId(writerTabs[0].id);
+    }
+  }, [writerTabs, selectedWriterId]);
+
+  const handleCopyToWriter = () => {
+    if (!selectedWriterId || !fullMessage) return;
+    const updates: Partial<Tab> = {};
+    if (copyMode === "payload" || copyMode === "all") {
+       updates.body = isMessageJson ? bodyText : fullMessage.body;
+    }
+    if (copyMode === "all") {
+       updates.headers = fullMessage.headers || "";
+       if (fullMessage.properties) {
+          if (fullMessage.properties.content_type) updates.contentType = fullMessage.properties.content_type;
+          if (fullMessage.properties.delivery_mode) updates.deliveryMode = fullMessage.properties.delivery_mode;
+          if (fullMessage.properties.correlation_id) {
+            updates.correlationId = fullMessage.properties.correlation_id;
+            updates.autoCorrelationId = false;
+          }
+          if (fullMessage.properties.message_id) {
+            updates.messageId = fullMessage.properties.message_id;
+            updates.autoMessageId = false;
+          }
+       }
+    }
+    updateTab(selectedWriterId, updates);
+    setActiveTabStore(selectedWriterId);
+    setShowCopyToWriter(false);
+  };
 
   // Custom 300ms debounce
   useEffect(() => {
@@ -404,24 +446,57 @@ export function MessageDetailPanel({ message, onClose }: Props) {
             )}
           </div>
           
-          <div style={{ padding: "16px", borderTop: "1px solid var(--border-color)", backgroundColor: "var(--bg-sidebar)", flexShrink: 0 }}>
-             <button
-                className={`btn-secondary ${copiedSection === "full" ? "copied" : ""}`}
-                onClick={() => doCopy(JSON.stringify(fullMessage, null, 2), "full")}
-                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-              >
-                {copiedSection === "full" ? (
-                  <>Copied ✓</>
-                ) : (
-                  <>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                    Copy Full Message (JSON)
-                  </>
-                )}
-              </button>
+          <div style={{ padding: "16px", borderTop: "1px solid var(--border-color)", backgroundColor: "var(--bg-sidebar)", flexShrink: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
+            {showCopyToWriter ? (
+               <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "12px", backgroundColor: "var(--bg-secondary)", borderRadius: "6px", border: "1px solid var(--border-color)" }}>
+                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                   <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Copy to Writer</span>
+                   <button onClick={() => setShowCopyToWriter(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                 </div>
+                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                   <select value={selectedWriterId} onChange={e => setSelectedWriterId(e.target.value)} style={{ flex: 1, padding: "6px 8px", fontSize: "12px", borderRadius: "4px", border: "1px solid var(--border-color)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
+                      {writerTabs.map(t => <option key={t.id} value={t.id}>{t.label} ({t.connName} - {t.targetName})</option>)}
+                      {writerTabs.length === 0 && <option value="" disabled>No writers open</option>}
+                   </select>
+                   <select value={copyMode} onChange={e => setCopyMode(e.target.value as any)} style={{ width: "120px", padding: "6px 8px", fontSize: "12px", borderRadius: "4px", border: "1px solid var(--border-color)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
+                     <option value="payload">Payload only</option>
+                     <option value="all">All (inc. props)</option>
+                   </select>
+                   <button className="btn-primary" onClick={handleCopyToWriter} disabled={!selectedWriterId} style={{ padding: "6px 16px", fontSize: "12px", height: "auto" }}>Copy</button>
+                 </div>
+               </div>
+            ) : (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                   className={`btn-secondary ${copiedSection === "full" ? "copied" : ""}`}
+                   onClick={() => doCopy(JSON.stringify(fullMessage, null, 2), "full")}
+                   style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                 >
+                   {copiedSection === "full" ? (
+                     <>Copied ✓</>
+                   ) : (
+                     <>
+                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                       </svg>
+                       Copy Full Message
+                     </>
+                   )}
+                 </button>
+                 <button
+                   className="btn-primary"
+                   onClick={() => setShowCopyToWriter(true)}
+                   style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                 >
+                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="M22 2L11 13" />
+                     <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                   </svg>
+                   Send to Writer
+                 </button>
+               </div>
+            )}
           </div>
         </>
       )}
