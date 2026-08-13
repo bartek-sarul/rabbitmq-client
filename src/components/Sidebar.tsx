@@ -15,6 +15,19 @@ interface OpenTabOptions {
   folderPath?: string;
 }
 
+// Fuzzy subsequence match: every character of `query` must appear in `target`,
+// in order, but not necessarily contiguously (case-insensitive).
+function fuzzyMatch(query: string, target: string): boolean {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+  let qi = 0;
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) qi++;
+  }
+  return qi === q.length;
+}
+
 export function Sidebar() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +38,7 @@ export function Sidebar() {
   const [opening, setOpening] = useState(false);
   const [folderPath, setFolderPath] = useState<string>("");
   const [useLastFolder, setUseLastFolder] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const addTab = useAppStore((s) => s.addTab);
 
@@ -270,6 +284,30 @@ export function Sidebar() {
         </button>
       </div>
 
+      {config && (
+        <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border-color)" }}>
+          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <svg style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--text-muted)" }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input
+              type="text"
+              placeholder="Search connections…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: "100%", padding: "6px 28px", fontSize: "13px", height: "30px", boxSizing: "border-box" }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                style={{ position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                title="Clear search"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {!config ? (
         <div className="sidebar-loading">
           <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "pulse 1s infinite" }}>
@@ -279,72 +317,101 @@ export function Sidebar() {
         </div>
       ) : (
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-          {config.connections.map((conn) => (
-          <div key={conn.name} className="conn-item">
-            <button className="conn-name" onClick={() => toggleConn(conn.name)}>
-              <span className="arrow" style={{ transform: expanded.has(conn.name) ? "rotate(90deg)" : "rotate(0deg)" }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent-color)" }}>
-                <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
-                <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
-                <line x1="6" y1="6" x2="6.01" y2="6" />
-                <line x1="6" y1="18" x2="6.01" y2="18" />
-              </svg>
-              {conn.name}
-            </button>
+          {(() => {
+            const query = searchQuery.trim();
+            const isSearching = query.length > 0;
 
-            {expanded.has(conn.name) && (
-              <div className="conn-children">
-                {conn.queues.length > 0 && (
-                  <div className="target-group">
-                    <span className="target-group-label">Queues</span>
-                    {conn.queues.map((q) => (
-                      <button
-                        key={q.name}
-                        className="target-item"
-                        onClick={() => selectTarget(conn, q.name, "queue")}
-                      >
-                        <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--success-color)" }}>
-                            <line x1="3" y1="6" x2="21" y2="6" />
-                            <line x1="3" y1="12" x2="21" y2="12" />
-                            <line x1="3" y1="18" x2="21" y2="18" />
-                            <line x1="3" y1="6" x2="3" y2="18" />
-                            <line x1="21" y1="6" x2="21" y2="18" />
-                          </svg>
-                          {q.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {conn.exchanges.length > 0 && (
-                  <div className="target-group">
-                    <span className="target-group-label">Exchanges</span>
-                    {conn.exchanges.map((ex) => (
-                      <button
-                        key={ex.name}
-                        className="target-item exchange"
-                        onClick={() => selectTarget(conn, ex.name, "exchange")}
-                      >
-                        <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent-color)" }}>
-                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                          </svg>
-                          {ex.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))
-        }
+            const visibleConnections = config.connections
+              .map((conn) => {
+                const connNameMatches = fuzzyMatch(query, conn.name);
+                const queues = !isSearching || connNameMatches
+                  ? conn.queues
+                  : conn.queues.filter((q) => fuzzyMatch(query, q.name));
+                const exchanges = !isSearching || connNameMatches
+                  ? conn.exchanges
+                  : conn.exchanges.filter((e) => fuzzyMatch(query, e.name));
+                const hasMatch = connNameMatches || queues.length > 0 || exchanges.length > 0;
+                return { conn, queues, exchanges, hasMatch };
+              })
+              .filter((item) => !isSearching || item.hasMatch);
+
+            if (isSearching && visibleConnections.length === 0) {
+              return (
+                <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
+                  No connections match "{query}"
+                </div>
+              );
+            }
+
+            return visibleConnections.map(({ conn, queues, exchanges }) => {
+              const isExpanded = isSearching ? true : expanded.has(conn.name);
+              return (
+                <div key={conn.name} className="conn-item">
+                  <button className="conn-name" onClick={() => toggleConn(conn.name)}>
+                    <span className="arrow" style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)" }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent-color)" }}>
+                      <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+                      <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+                      <line x1="6" y1="6" x2="6.01" y2="6" />
+                      <line x1="6" y1="18" x2="6.01" y2="18" />
+                    </svg>
+                    {conn.name}
+                  </button>
+
+                  {isExpanded && (
+                    <div className="conn-children">
+                      {queues.length > 0 && (
+                        <div className="target-group">
+                          <span className="target-group-label">Queues</span>
+                          {queues.map((q) => (
+                            <button
+                              key={q.name}
+                              className="target-item"
+                              onClick={() => selectTarget(conn, q.name, "queue")}
+                            >
+                              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--success-color)" }}>
+                                  <line x1="3" y1="6" x2="21" y2="6" />
+                                  <line x1="3" y1="12" x2="21" y2="12" />
+                                  <line x1="3" y1="18" x2="21" y2="18" />
+                                  <line x1="3" y1="6" x2="3" y2="18" />
+                                  <line x1="21" y1="6" x2="21" y2="18" />
+                                </svg>
+                                {q.name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {exchanges.length > 0 && (
+                        <div className="target-group">
+                          <span className="target-group-label">Exchanges</span>
+                          {exchanges.map((ex) => (
+                            <button
+                              key={ex.name}
+                              className="target-item exchange"
+                              onClick={() => selectTarget(conn, ex.name, "exchange")}
+                            >
+                              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent-color)" }}>
+                                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                                </svg>
+                                {ex.name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()}
         </div>
       )}
 
