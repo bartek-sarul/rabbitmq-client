@@ -1,6 +1,7 @@
 import { useAppStore } from "../store/useAppStore";
 import { invoke } from "@tauri-apps/api/core";
 import { Tab } from "../types";
+import { XIcon } from "./icons";
 
 export function TabBar() {
   const tabs = useAppStore((s) => s.tabs);
@@ -43,23 +44,23 @@ export function TabBar() {
             <div key={tab.lastReceived} className="tab-flash-indicator" />
           )}
           {hasDuplicateReader(tab) && (
-            <span title="Warning: Multiple reader tabs are listening to this queue simultaneously!" style={{ cursor: "help", fontSize: "12px", display: "inline-flex", alignItems: "center" }}>
+            <span title="Warning: Multiple reader tabs are listening to this queue simultaneously!" style={{ cursor: "help", fontSize: "var(--fs-sm)", display: "inline-flex", alignItems: "center" }}>
               ⚠️
             </span>
           )}
           {/* Mode tag */}
           <span
             className={`badge ${tab.mode === "read" ? "read" : "write"}`}
-            style={{ fontSize: "8px", fontWeight: "800", padding: "2px 4px", borderRadius: "3px" }}
+            style={{ fontSize: "var(--fs-badge)", fontWeight: "800", padding: "2px 4px", borderRadius: "3px" }}
           >
             {tab.mode === "read" ? "CONSUMER" : "PUBLISHER"}
           </span>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-            <span style={{ fontSize: "12px", fontWeight: tab.id === activeTabId ? "600" : "500", color: "var(--text-primary)", lineHeight: "1.2" }}>
+            <span style={{ fontSize: "var(--fs-sm)", fontWeight: tab.id === activeTabId ? "600" : "500", color: "var(--text-primary)", lineHeight: "1.2" }}>
               {tab.targetName}
             </span>
-            <span style={{ fontSize: "9px", color: "var(--text-muted)", lineHeight: "1" }}>
+            <span style={{ fontSize: "var(--fs-badge)", color: "var(--text-muted)", lineHeight: "1" }}>
               {tab.connName}
             </span>
           </div>
@@ -73,10 +74,7 @@ export function TabBar() {
             title="Close tab"
             style={{ marginLeft: "4px" }}
           >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <XIcon size={10} />
           </button>
         </div>
       ))}

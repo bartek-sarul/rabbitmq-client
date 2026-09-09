@@ -7,6 +7,7 @@ import { AutocompleteInput } from "./AutocompleteInput";
 import { sanitizeQuotes } from "../utils/sanitize";
 import { BulkSender } from "./BulkSender";
 import { HeadersEditorModal } from "./HeadersEditorModal";
+import { XIcon } from "./icons";
 
 interface Props {
   tab: Tab;
@@ -121,7 +122,7 @@ export function WriteTab({ tab }: Props) {
               {tab.targetName}
               <span className="type-tag">{tab.targetType}</span>
             </span>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+            <span style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", marginTop: "2px" }}>
               Connection: <strong>{tab.connName}</strong>
             </span>
           </div>
@@ -145,7 +146,7 @@ export function WriteTab({ tab }: Props) {
       {/* Headers & Properties Panel */}
       <div className="write-options-panel">
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label className="field-label" style={{ fontSize: "11px" }}>Content Type</label>
+          <label className="field-label" style={{ fontSize: "var(--fs-xs)" }}>Content Type</label>
           <div style={{ position: "relative", display: "flex", alignItems: "center", width: "100%" }}>
             <AutocompleteInput
               value={contentType}
@@ -163,12 +164,12 @@ export function WriteTab({ tab }: Props) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label className="field-label" style={{ fontSize: "11px" }}>Delivery Mode</label>
+          <label className="field-label" style={{ fontSize: "var(--fs-xs)" }}>Delivery Mode</label>
           <div style={{ position: "relative", display: "flex", alignItems: "center", width: "100%" }}>
             <select
               value={deliveryMode}
               onChange={(e) => updateTab(tab.id, { deliveryMode: Number(e.target.value) })}
-              style={{ padding: "8px 30px 8px 12px", fontSize: "13px", height: "36px", boxSizing: "border-box", width: "100%" }}
+              style={{ padding: "8px 30px 8px 12px", fontSize: "var(--fs-md)", height: "36px", boxSizing: "border-box", width: "100%" }}
             >
               <option value={1}>1 - Transient</option>
               <option value={2}>2 - Persistent</option>
@@ -188,19 +189,19 @@ export function WriteTab({ tab }: Props) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "11px",
+                  fontSize: "var(--fs-xs)",
                   lineHeight: 1
                 }}
                 title="Reset to default"
               >
-                ✕
+                <XIcon size={10} />
               </button>
             )}
           </div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label className="field-label" style={{ fontSize: "11px" }}>Correlation ID</label>
+          <label className="field-label" style={{ fontSize: "var(--fs-xs)" }}>Correlation ID</label>
           <div style={{ display: "flex", gap: "6px", width: "100%", alignItems: "center" }}>
             <div style={{ position: "relative", display: "flex", alignItems: "center", flexGrow: 1 }}>
               <input
@@ -209,7 +210,7 @@ export function WriteTab({ tab }: Props) {
                 onChange={(e) => handleTextChange("correlationId", e.target.value)}
                 placeholder="e.g. corr-123"
                 readOnly={autoCorrelationId}
-                style={{ padding: "8px 30px 8px 12px", fontSize: "13px", height: "36px", boxSizing: "border-box", width: "100%", opacity: autoCorrelationId ? 0.6 : 1, backgroundColor: autoCorrelationId ? "var(--bg-secondary)" : undefined }}
+                style={{ padding: "8px 30px 8px 12px", fontSize: "var(--fs-md)", height: "36px", boxSizing: "border-box", width: "100%", opacity: autoCorrelationId ? 0.6 : 1, backgroundColor: autoCorrelationId ? "var(--bg-secondary)" : undefined }}
                 spellCheck={false}
                 autoCorrect="off"
                 autoCapitalize="off"
@@ -230,12 +231,12 @@ export function WriteTab({ tab }: Props) {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "11px",
+                    fontSize: "var(--fs-xs)",
                     lineHeight: 1
                   }}
                   title="Clear"
                 >
-                  ✕
+                  <XIcon size={10} />
                 </button>
               )}
             </div>
@@ -251,13 +252,13 @@ export function WriteTab({ tab }: Props) {
                 }}
                 id={`auto-corr-${tab.id}`}
               />
-              <label htmlFor={`auto-corr-${tab.id}`} style={{ fontSize: "11px", color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}>Auto-generate</label>
+              <label htmlFor={`auto-corr-${tab.id}`} style={{ fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}>Auto-generate</label>
             </div>
           </div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label className="field-label" style={{ fontSize: "11px" }}>Message ID</label>
+          <label className="field-label" style={{ fontSize: "var(--fs-xs)" }}>Message ID</label>
           <div style={{ display: "flex", gap: "6px", width: "100%", alignItems: "center" }}>
             <div style={{ position: "relative", display: "flex", alignItems: "center", flexGrow: 1 }}>
               <input
@@ -266,7 +267,7 @@ export function WriteTab({ tab }: Props) {
                 onChange={(e) => handleTextChange("messageId", e.target.value)}
                 placeholder="e.g. msg-123"
                 readOnly={autoMessageId}
-                style={{ padding: "8px 30px 8px 12px", fontSize: "13px", height: "36px", boxSizing: "border-box", width: "100%", opacity: autoMessageId ? 0.6 : 1, backgroundColor: autoMessageId ? "var(--bg-secondary)" : undefined }}
+                style={{ padding: "8px 30px 8px 12px", fontSize: "var(--fs-md)", height: "36px", boxSizing: "border-box", width: "100%", opacity: autoMessageId ? 0.6 : 1, backgroundColor: autoMessageId ? "var(--bg-secondary)" : undefined }}
                 spellCheck={false}
                 autoCorrect="off"
                 autoCapitalize="off"
@@ -287,12 +288,12 @@ export function WriteTab({ tab }: Props) {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "11px",
+                    fontSize: "var(--fs-xs)",
                     lineHeight: 1
                   }}
                   title="Clear"
                 >
-                  ✕
+                  <XIcon size={10} />
                 </button>
               )}
             </div>
@@ -308,16 +309,16 @@ export function WriteTab({ tab }: Props) {
                 }}
                 id={`auto-msg-${tab.id}`}
               />
-              <label htmlFor={`auto-msg-${tab.id}`} style={{ fontSize: "11px", color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}>Auto-generate</label>
+              <label htmlFor={`auto-msg-${tab.id}`} style={{ fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}>Auto-generate</label>
             </div>
           </div>
         </div>
 
         <div style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: "4px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <label className="field-label" style={{ fontSize: "11px", margin: 0 }}>
+            <label className="field-label" style={{ fontSize: "var(--fs-xs)", margin: 0 }}>
               Headers <span className="optional">(JSON object)</span>
-              {headersError && <span style={{ color: "var(--danger-color)", marginLeft: "12px", fontSize: "11px" }}>{headersError}</span>}
+              {headersError && <span style={{ color: "var(--danger-color)", marginLeft: "12px", fontSize: "var(--fs-xs)" }}>{headersError}</span>}
             </label>
             <button
               type="button"
@@ -328,7 +329,7 @@ export function WriteTab({ tab }: Props) {
                 color: "var(--text-primary)",
                 padding: "4px 8px",
                 borderRadius: "4px",
-                fontSize: "11px",
+                fontSize: "var(--fs-xs)",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -345,7 +346,7 @@ export function WriteTab({ tab }: Props) {
               onChange={(e) => handleTextChange("headers", e.target.value)}
               placeholder='{"x-delay": 1000, "custom-header": "value"}'
               rows={3}
-              style={{ padding: "8px 30px 8px 12px", fontSize: "13px", fontFamily: "var(--font-mono)", resize: "vertical", minHeight: "60px", width: "100%", boxSizing: "border-box" }}
+              style={{ padding: "8px 30px 8px 12px", fontSize: "var(--fs-md)", fontFamily: "var(--font-mono)", resize: "vertical", minHeight: "60px", width: "100%", boxSizing: "border-box" }}
               spellCheck={false}
               autoCorrect="off"
               autoCapitalize="off"
@@ -367,12 +368,12 @@ export function WriteTab({ tab }: Props) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "12px",
+                  fontSize: "var(--fs-sm)",
                   lineHeight: 1
                 }}
                 title="Clear"
               >
-                ✕
+                <XIcon size={10} />
               </button>
             )}
           </div>
@@ -387,7 +388,7 @@ export function WriteTab({ tab }: Props) {
             onClick={() => setMode('single')}
             style={{ 
               background: "none", border: "none", cursor: "pointer", 
-              padding: "4px 8px", fontSize: "14px", fontWeight: mode === 'single' ? 600 : 400,
+              padding: "4px 8px", fontSize: "var(--fs-lg)", fontWeight: mode === 'single' ? 600 : 400,
               color: mode === 'single' ? "var(--primary-color)" : "var(--text-secondary)",
               borderBottom: mode === 'single' ? "2px solid var(--primary-color)" : "2px solid transparent",
               marginBottom: "-9px"
@@ -401,7 +402,7 @@ export function WriteTab({ tab }: Props) {
             onClick={() => setMode('bulk')}
             style={{ 
               background: "none", border: "none", cursor: "pointer", 
-              padding: "4px 8px", fontSize: "14px", fontWeight: mode === 'bulk' ? 600 : 400,
+              padding: "4px 8px", fontSize: "var(--fs-lg)", fontWeight: mode === 'bulk' ? 600 : 400,
               color: mode === 'bulk' ? "var(--primary-color)" : "var(--text-secondary)",
               borderBottom: mode === 'bulk' ? "2px solid var(--primary-color)" : "2px solid transparent",
               marginBottom: "-9px"
@@ -414,7 +415,7 @@ export function WriteTab({ tab }: Props) {
               <div style={{ flexGrow: 1, display: mode === 'single' ? "flex" : "none", flexDirection: "column" }}>
             <label className="field-label" style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Message payload (JSON)</span>
-              {headersError && <span style={{ color: "var(--danger-color)", fontSize: "12px", fontWeight: "normal" }}>Cannot send: {headersError}</span>}
+              {headersError && <span style={{ color: "var(--danger-color)", fontSize: "var(--fs-sm)", fontWeight: "normal" }}>Cannot send: {headersError}</span>}
             </label>
             <div style={{ position: "relative", flexGrow: 1, display: "flex", flexDirection: "column" }}>
               <textarea
@@ -456,10 +457,7 @@ export function WriteTab({ tab }: Props) {
                   }}
                   title="Clear payload"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                  <XIcon size={14} />
                 </button>
               )}
             </div>
@@ -493,11 +491,11 @@ export function WriteTab({ tab }: Props) {
               {status && (
                 <span className={`send-status ${status.ok ? "ok" : "err"}`}>
                   {status.ok ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10" />
                       <line x1="12" y1="8" x2="12" y2="12" />
                       <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -559,7 +557,7 @@ export function WriteTab({ tab }: Props) {
               <strong>Reset Writer?</strong>
             </div>
 
-            <div style={{ fontSize: "14px", color: "var(--text-secondary)", margin: "16px 0", lineHeight: "1.5" }}>
+            <div style={{ fontSize: "var(--fs-lg)", color: "var(--text-secondary)", margin: "16px 0", lineHeight: "1.5" }}>
               Are you sure you want to reset all fields? This will clear the message body, routing key, headers, and all publisher properties.
             </div>
 

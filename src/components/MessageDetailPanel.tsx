@@ -6,6 +6,7 @@ import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
 import xml from 'react-syntax-highlighter/dist/esm/languages/hljs/xml';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { XIcon } from "./icons";
 
 function escapeHtml(unsafe: string) {
   return unsafe
@@ -243,16 +244,13 @@ export function MessageDetailPanel({ message, onClose }: Props) {
     }}>
       {/* Header */}
       <div style={{ padding: "16px", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "var(--bg-sidebar)" }}>
-        <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 600 }}>Message Details</h3>
+        <h3 style={{ margin: 0, fontSize: "var(--fs-xl)", fontWeight: 600 }}>Message Details</h3>
         <button
           onClick={onClose}
           style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "4px" }}
           title="Close panel"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          <XIcon size={18} />
         </button>
       </div>
 
@@ -276,29 +274,29 @@ export function MessageDetailPanel({ message, onClose }: Props) {
         <>
           <div style={{ padding: "16px", paddingBottom: "0" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
-              <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>ID: <span style={{ color: "var(--text-primary)", fontFamily: "monospace" }}>{fullMessage.id}</span></div>
-              <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Received: <span style={{ color: "var(--text-primary)" }}>{fullMessage.timestamp.replace("T", " ").slice(0, 19)}</span></div>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)" }}>ID: <span style={{ color: "var(--text-primary)", fontFamily: "monospace" }}>{fullMessage.id}</span></div>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)" }}>Received: <span style={{ color: "var(--text-primary)" }}>{fullMessage.timestamp.replace("T", " ").slice(0, 19)}</span></div>
             </div>
 
             <div style={{ display: "flex", gap: "16px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
               <button
                 type="button"
                 onClick={() => setActiveTab("payload")}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", fontSize: "14px", fontWeight: activeTab === "payload" ? 600 : 400, color: activeTab === "payload" ? "var(--primary-color)" : "var(--text-secondary)", borderBottom: activeTab === "payload" ? "2px solid var(--primary-color)" : "2px solid transparent", marginBottom: "-9px" }}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", fontSize: "var(--fs-lg)", fontWeight: activeTab === "payload" ? 600 : 400, color: activeTab === "payload" ? "var(--primary-color)" : "var(--text-secondary)", borderBottom: activeTab === "payload" ? "2px solid var(--primary-color)" : "2px solid transparent", marginBottom: "-9px" }}
               >
                 Payload
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("headers")}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", fontSize: "14px", fontWeight: activeTab === "headers" ? 600 : 400, color: activeTab === "headers" ? "var(--primary-color)" : "var(--text-secondary)", borderBottom: activeTab === "headers" ? "2px solid var(--primary-color)" : "2px solid transparent", marginBottom: "-9px" }}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", fontSize: "var(--fs-lg)", fontWeight: activeTab === "headers" ? 600 : 400, color: activeTab === "headers" ? "var(--primary-color)" : "var(--text-secondary)", borderBottom: activeTab === "headers" ? "2px solid var(--primary-color)" : "2px solid transparent", marginBottom: "-9px" }}
               >
                 Headers
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("properties")}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", fontSize: "14px", fontWeight: activeTab === "properties" ? 600 : 400, color: activeTab === "properties" ? "var(--primary-color)" : "var(--text-secondary)", borderBottom: activeTab === "properties" ? "2px solid var(--primary-color)" : "2px solid transparent", marginBottom: "-9px" }}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 8px", fontSize: "var(--fs-lg)", fontWeight: activeTab === "properties" ? 600 : 400, color: activeTab === "properties" ? "var(--primary-color)" : "var(--text-secondary)", borderBottom: activeTab === "properties" ? "2px solid var(--primary-color)" : "2px solid transparent", marginBottom: "-9px" }}
               >
                 Properties
               </button>
@@ -316,10 +314,10 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                 )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>{isMessageJson ? "JSON Payload" : "Raw Payload"}</span>
+                    <span style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", fontWeight: 600 }}>{isMessageJson ? "JSON Payload" : "Raw Payload"}</span>
                     <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "8px" }}>
                       <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: "6px" }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: "6px" }}>
                           <circle cx="11" cy="11" r="8"></circle>
                           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
@@ -341,18 +339,18 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                               }
                             }
                           }}
-                          style={{ fontSize: "12px", padding: "4px 8px 4px 22px", width: "160px" }} 
+                          style={{ fontSize: "var(--fs-sm)", padding: "4px 8px 4px 22px", width: "160px" }} 
                         />
                       </div>
                       {matchCount > 0 && (
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "var(--text-muted)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "4px", padding: "2px 6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--fs-xs)", color: "var(--text-muted)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "4px", padding: "2px 6px" }}>
                           <span style={{ minWidth: "32px", textAlign: "center" }}>{currentMatchIndex} / {matchCount}</span>
                           <div style={{ display: "flex", gap: "2px", borderLeft: "1px solid var(--border-color)", paddingLeft: "6px" }}>
                             <button onClick={handlePrevMatch} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px", color: "inherit", display: "flex" }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
                             </button>
                             <button onClick={handleNextMatch} style={{ background: "none", border: "none", cursor: "pointer", padding: "2px", color: "inherit", display: "flex" }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button>
                           </div>
                         </div>
@@ -362,14 +360,14 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button
                       className={`btn-secondary ${copiedSection === "full" ? "copied" : ""}`}
-                      style={{ padding: "4px 8px", fontSize: "12px", height: "auto" }}
+                      style={{ padding: "4px 8px", fontSize: "var(--fs-sm)", height: "auto" }}
                       onClick={() => doCopy(JSON.stringify(fullMessage, null, 2), "full")}
                     >
                       {copiedSection === "full" ? "Copied ✓" : "Copy Full Message"}
                     </button>
                     <button
                       className={`btn-secondary ${copiedSection === "body" ? "copied" : ""}`}
-                      style={{ padding: "4px 8px", fontSize: "12px", height: "auto" }}
+                      style={{ padding: "4px 8px", fontSize: "var(--fs-sm)", height: "auto" }}
                       onClick={() => doCopy(fullMessage.body, "body")}
                     >
                       {copiedSection === "body" ? "Copied ✓" : "Copy Raw"}
@@ -377,7 +375,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                     {isMessageJson && (
                       <button
                         className={`btn-secondary ${copiedSection === "body_json" ? "copied" : ""}`}
-                        style={{ padding: "4px 8px", fontSize: "12px", height: "auto" }}
+                        style={{ padding: "4px 8px", fontSize: "var(--fs-sm)", height: "auto" }}
                         onClick={() => doCopy(bodyText, "body_json")}
                       >
                         {copiedSection === "body_json" ? "Copied ✓" : "Copy JSON"}
@@ -389,7 +387,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                   <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
                     {bodyText.length > SYNTAX_HIGHLIGHT_MAX_CHARS || highlightedHtml ? (
                       <pre 
-                        style={{ margin: 0, height: "100%", borderRadius: "6px", padding: "12px", fontSize: "12px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)", overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all", color: "var(--text-primary)" }}
+                        style={{ margin: 0, height: "100%", borderRadius: "6px", padding: "12px", fontSize: "var(--fs-sm)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)", overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all", color: "var(--text-primary)" }}
                         dangerouslySetInnerHTML={highlightedHtml ? { __html: highlightedHtml } : undefined}
                       >
                         {!highlightedHtml ? bodyText : undefined}
@@ -398,7 +396,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                       <SyntaxHighlighter 
                         language={getLanguage()} 
                         style={atomOneDark} 
-                        customStyle={{ margin: 0, minHeight: "100%", height: "100%", borderRadius: "6px", fontSize: "12px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)", overflow: "auto" }}
+                        customStyle={{ margin: 0, minHeight: "100%", height: "100%", borderRadius: "6px", fontSize: "var(--fs-sm)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)", overflow: "auto" }}
                         wrapLines={true}
                         wrapLongLines={true}
                       >
@@ -415,7 +413,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <button
                     className={`btn-secondary ${copiedSection === "headers" ? "copied" : ""}`}
-                    style={{ padding: "4px 8px", fontSize: "12px", height: "auto" }}
+                    style={{ padding: "4px 8px", fontSize: "var(--fs-sm)", height: "auto" }}
                     onClick={() => doCopy(fullMessage.headers || "", "headers")}
                   >
                     {copiedSection === "headers" ? "Copied ✓" : "Copy"}
@@ -426,7 +424,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                     position: "absolute", top: 0, left: 0, right: 0, bottom: 0, 
                     margin: 0, padding: "12px", backgroundColor: "var(--bg-secondary)", 
                     borderRadius: "6px", border: "1px solid var(--border-color)", 
-                    overflowY: "auto", fontSize: "12px", whiteSpace: "pre-wrap", color: "var(--text-primary)" 
+                    overflowY: "auto", fontSize: "var(--fs-sm)", whiteSpace: "pre-wrap", color: "var(--text-primary)" 
                   }}>
                     {fullMessage.headers || "(none)"}
                   </pre>
@@ -439,7 +437,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <button
                     className={`btn-secondary ${copiedSection === "properties" ? "copied" : ""}`}
-                    style={{ padding: "4px 8px", fontSize: "12px", height: "auto" }}
+                    style={{ padding: "4px 8px", fontSize: "var(--fs-sm)", height: "auto" }}
                     onClick={() => doCopy(JSON.stringify(fullMessage.properties, null, 2), "properties")}
                   >
                     {copiedSection === "properties" ? "Copied ✓" : "Copy"}
@@ -450,7 +448,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                     position: "absolute", top: 0, left: 0, right: 0, bottom: 0, 
                     margin: 0, padding: "12px", backgroundColor: "var(--bg-secondary)", 
                     borderRadius: "6px", border: "1px solid var(--border-color)", 
-                    overflowY: "auto", fontSize: "12px", whiteSpace: "pre-wrap", color: "var(--text-primary)" 
+                    overflowY: "auto", fontSize: "var(--fs-sm)", whiteSpace: "pre-wrap", color: "var(--text-primary)" 
                   }}>
                     {JSON.stringify(fullMessage.properties, null, 2)}
                   </pre>
@@ -463,19 +461,19 @@ export function MessageDetailPanel({ message, onClose }: Props) {
             {showCopyToWriter ? (
                <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "12px", backgroundColor: "var(--bg-secondary)", borderRadius: "6px", border: "1px solid var(--border-color)" }}>
                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                   <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Copy to Writer</span>
-                   <button onClick={() => setShowCopyToWriter(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                   <span style={{ fontSize: "var(--fs-md)", fontWeight: 600, color: "var(--text-primary)" }}>Copy to Writer</span>
+                   <button onClick={() => setShowCopyToWriter(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "var(--fs-sm)", display: "flex", alignItems: "center", justifyContent: "center" }}><XIcon size={10} /></button>
                  </div>
                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                   <select value={selectedWriterId} onChange={e => setSelectedWriterId(e.target.value)} style={{ flex: 1, padding: "6px 8px", fontSize: "12px", borderRadius: "4px", border: "1px solid var(--border-color)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
+                   <select value={selectedWriterId} onChange={e => setSelectedWriterId(e.target.value)} style={{ flex: 1, padding: "6px 8px", fontSize: "var(--fs-sm)", borderRadius: "4px", border: "1px solid var(--border-color)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
                       {writerTabs.map(t => <option key={t.id} value={t.id}>{t.label} ({t.connName} - {t.targetName})</option>)}
                       {writerTabs.length === 0 && <option value="" disabled>No writers open</option>}
                    </select>
-                   <select value={copyMode} onChange={e => setCopyMode(e.target.value as CopyMode)} style={{ width: "120px", padding: "6px 8px", fontSize: "12px", borderRadius: "4px", border: "1px solid var(--border-color)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
+                   <select value={copyMode} onChange={e => setCopyMode(e.target.value as CopyMode)} style={{ width: "120px", padding: "6px 8px", fontSize: "var(--fs-sm)", borderRadius: "4px", border: "1px solid var(--border-color)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
                      <option value="payload">Payload only</option>
                      <option value="all">All (inc. props)</option>
                    </select>
-                   <button className="btn-primary" onClick={handleCopyToWriter} disabled={!selectedWriterId} style={{ padding: "6px 16px", fontSize: "12px", height: "auto" }}>Copy</button>
+                   <button className="btn-primary" onClick={handleCopyToWriter} disabled={!selectedWriterId} style={{ padding: "6px 16px", fontSize: "var(--fs-sm)", height: "auto" }}>Copy</button>
                  </div>
                </div>
             ) : (

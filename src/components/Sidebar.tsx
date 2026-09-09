@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { ConfigEditorModal } from "./ConfigEditorModal";
 import { open } from "@tauri-apps/plugin-dialog";
 import { fuzzyMatch } from "../utils/fuzzyMatch";
+import { SearchIcon, XIcon } from "./icons";
 
 interface OpenTabOptions {
   conn: ConnectionDef;
@@ -231,7 +232,7 @@ export function Sidebar() {
               color: "#fff",
               borderRadius: "4px",
               cursor: "pointer",
-              fontSize: "12px",
+              fontSize: "var(--fs-sm)",
               fontWeight: 600
             }}
           >
@@ -274,7 +275,7 @@ export function Sidebar() {
             transition: "all 0.2s"
           }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
           </svg>
@@ -284,13 +285,13 @@ export function Sidebar() {
       {config && (
         <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border-color)" }}>
           <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <svg style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--text-muted)" }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span style={{ display: "inline-flex", position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--text-muted)"  }}><SearchIcon size={14} /></span>
             <input
               type="text"
               placeholder="Search connections…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: "100%", padding: "6px 28px", fontSize: "13px", height: "30px", boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "6px 28px", fontSize: "var(--fs-md)", height: "30px", boxSizing: "border-box" }}
             />
             {searchQuery && (
               <button
@@ -298,7 +299,7 @@ export function Sidebar() {
                 style={{ position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center" }}
                 title="Clear search"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <XIcon size={14} />
               </button>
             )}
           </div>
@@ -334,7 +335,7 @@ export function Sidebar() {
 
             if (isSearching && visibleConnections.length === 0) {
               return (
-                <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
+                <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: "var(--fs-md)" }}>
                   No connections match "{query}"
                 </div>
               );
@@ -350,7 +351,7 @@ export function Sidebar() {
                         <polyline points="9 18 15 12 9 6" />
                       </svg>
                     </span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent-color)" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent-color)" }}>
                       <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
                       <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
                       <line x1="6" y1="6" x2="6.01" y2="6" />
@@ -371,7 +372,7 @@ export function Sidebar() {
                               onClick={() => selectTarget(conn, q.name, "queue")}
                             >
                               <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--success-color)" }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--success-color)" }}>
                                   <line x1="3" y1="6" x2="21" y2="6" />
                                   <line x1="3" y1="12" x2="21" y2="12" />
                                   <line x1="3" y1="18" x2="21" y2="18" />
@@ -394,7 +395,7 @@ export function Sidebar() {
                               onClick={() => selectTarget(conn, ex.name, "exchange")}
                             >
                               <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent-color)" }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent-color)" }}>
                                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
                                 </svg>
                                 {ex.name}
@@ -471,17 +472,17 @@ export function Sidebar() {
                   }}
                   onClick={(e) => e.stopPropagation()} // Prevent clicking folder inputs from triggering the mode-card click
                 >
-                  <strong style={{ fontSize: "12px", display: "block", marginBottom: "8px" }}>Message Storage Folder</strong>
-                  <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", marginBottom: "8px" }}>
+                  <strong style={{ fontSize: "var(--fs-sm)", display: "block", marginBottom: "8px" }}>Message Storage Folder</strong>
+                  <label style={{ fontSize: "var(--fs-sm)", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", marginBottom: "8px" }}>
                     <input type="checkbox" checked={useLastFolder} onChange={(e) => handleCheckboxChange(e.target.checked)} />
                     Use last folder for this queue
                   </label>
                   <div style={{ display: "flex", gap: "8px" }}>
-                    <input type="text" value={folderPath} readOnly disabled={useLastFolder} className="input" style={{ flex: 1, fontSize: "12px", padding: "4px 8px", opacity: useLastFolder ? 0.6 : 1 }} />
-                    <button type="button" className="btn-secondary" onClick={handleNewLocation} disabled={useLastFolder} style={{ padding: "4px 12px", fontSize: "12px", opacity: useLastFolder ? 0.6 : 1 }}>
+                    <input type="text" value={folderPath} readOnly disabled={useLastFolder} className="input" style={{ flex: 1, fontSize: "var(--fs-sm)", padding: "4px 8px", opacity: useLastFolder ? 0.6 : 1 }} />
+                    <button type="button" className="btn-secondary" onClick={handleNewLocation} disabled={useLastFolder} style={{ padding: "4px 12px", fontSize: "var(--fs-sm)", opacity: useLastFolder ? 0.6 : 1 }}>
                       New location
                     </button>
-                    <button type="button" className="btn-secondary" onClick={handlePickFolder} disabled={useLastFolder} style={{ padding: "4px 12px", fontSize: "12px", opacity: useLastFolder ? 0.6 : 1 }}>
+                    <button type="button" className="btn-secondary" onClick={handlePickFolder} disabled={useLastFolder} style={{ padding: "4px 12px", fontSize: "var(--fs-sm)", opacity: useLastFolder ? 0.6 : 1 }}>
                       Pick folder
                     </button>
                   </div>
@@ -511,7 +512,7 @@ export function Sidebar() {
             </div>
 
             {actionError && (
-              <div style={{ color: "var(--danger-color)", fontSize: "12px", padding: "0 4px 8px" }}>
+              <div style={{ color: "var(--danger-color)", fontSize: "var(--fs-sm)", padding: "0 4px 8px" }}>
                 {actionError}
               </div>
             )}

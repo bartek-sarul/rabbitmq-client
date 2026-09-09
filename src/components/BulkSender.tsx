@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Tab } from "../types";
 import { useAppStore } from "../store/useAppStore";
 import { createPortal } from "react-dom";
+import { XIcon } from "./icons";
 
 interface BulkFile {
   path: string;
@@ -165,7 +166,7 @@ export function BulkSender({
                     borderColor: statusFilter === s ? "var(--border-color)" : "transparent",
                     borderRadius: "4px",
                     padding: "2px 8px",
-                    fontSize: "11px",
+                    fontSize: "var(--fs-xs)",
                     cursor: "pointer",
                     textTransform: "capitalize"
                   }}
@@ -177,7 +178,7 @@ export function BulkSender({
           </div>
           <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <label style={{ fontSize: "12px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>Delay (ms):</label>
+              <label style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", whiteSpace: "nowrap" }}>Delay (ms):</label>
               <input
                 type="number"
                 min="0"
@@ -185,14 +186,14 @@ export function BulkSender({
                 value={bulkDelayMs}
                 onChange={(e) => setBulkDelayMs(Math.max(0, parseInt(e.target.value) || 0))}
                 disabled={bulkSending}
-                style={{ width: "70px", padding: "4px 8px", fontSize: "12px", boxSizing: "border-box" }}
+                style={{ width: "70px", padding: "4px 8px", fontSize: "var(--fs-sm)", boxSizing: "border-box" }}
               />
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
-              <button type="button" className="btn-primary" onClick={handleBulkSelect} disabled={bulkSending} style={{ padding: "4px 12px", fontSize: "12px", height: "auto" }}>
+              <button type="button" className="btn-primary" onClick={handleBulkSelect} disabled={bulkSending} style={{ padding: "4px 12px", fontSize: "var(--fs-sm)", height: "auto" }}>
                 Select files
               </button>
-              <button type="button" className="btn-secondary" onClick={() => setBulkFiles([])} disabled={bulkSending || bulkFiles.length === 0} style={{ padding: "4px 12px", fontSize: "12px", height: "auto" }}>
+              <button type="button" className="btn-secondary" onClick={() => setBulkFiles([])} disabled={bulkSending || bulkFiles.length === 0} style={{ padding: "4px 12px", fontSize: "var(--fs-sm)", height: "auto" }}>
                 Clear
               </button>
             </div>
@@ -202,35 +203,35 @@ export function BulkSender({
         <div style={{ position: "relative", flexGrow: 1, minHeight: "150px" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, overflowY: "auto", border: "1px solid var(--border-color)", borderRadius: "4px", padding: "8px", display: "flex", flexDirection: "column", gap: "8px", backgroundColor: "var(--bg-primary)" }}>
             {bulkFiles.length === 0 ? (
-              <div style={{ color: "var(--text-muted)", fontSize: "13px", textAlign: "center", marginTop: "24px" }}>No files selected. Click "Select files" to add JSON payloads.</div>
+              <div style={{ color: "var(--text-muted)", fontSize: "var(--fs-md)", textAlign: "center", marginTop: "24px" }}>No files selected. Click "Select files" to add JSON payloads.</div>
             ) : (
               bulkFiles.map((file) => {
                 if (statusFilter !== 'all' && file.status !== statusFilter && !(statusFilter === 'pending' && file.status === 'sending')) return null;
                 return (
                 <div key={file.path} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px", backgroundColor: "var(--bg-secondary)", borderRadius: "4px", flexShrink: 0 }}>
                   <div style={{ display: "flex", flexDirection: "column", maxWidth: "70%" }}>
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{file.name}</span>
-                    {file.errorMsg && <span style={{ fontSize: "11px", color: "var(--danger-color)", marginTop: "2px" }}>{file.errorMsg}</span>}
+                    <span style={{ fontSize: "var(--fs-md)", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{file.name}</span>
+                    {file.errorMsg && <span style={{ fontSize: "var(--fs-xs)", color: "var(--danger-color)", marginTop: "2px" }}>{file.errorMsg}</span>}
                   </div>
                   
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    {file.status === 'pending' && <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Pending</span>}
+                    {file.status === 'pending' && <span style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)" }}>Pending</span>}
                     {file.status === 'sending' && (
-                      <span style={{ fontSize: "12px", color: "var(--primary-color)", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span style={{ fontSize: "var(--fs-sm)", color: "var(--primary-color)", display: "flex", alignItems: "center", gap: "4px" }}>
                         <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "pulse 1s infinite" }}>
                           <circle cx="12" cy="12" r="10" strokeDasharray="30 10" />
                         </svg>
                         Sending...
                       </span>
                     )}
-                    {file.status === 'sent' && <span style={{ fontSize: "12px", color: "var(--success-color)", fontWeight: "bold" }}>Sent</span>}
+                    {file.status === 'sent' && <span style={{ fontSize: "var(--fs-sm)", color: "var(--success-color)", fontWeight: "bold" }}>Sent</span>}
                     {file.status === 'error' && (
                       <>
-                        <span style={{ fontSize: "12px", color: "var(--danger-color)", fontWeight: "bold" }}>Error</span>
+                        <span style={{ fontSize: "var(--fs-sm)", color: "var(--danger-color)", fontWeight: "bold" }}>Error</span>
                         <button
                           type="button"
                           className="btn-secondary"
-                          style={{ padding: "4px 8px", fontSize: "11px", height: "auto" }}
+                          style={{ padding: "4px 8px", fontSize: "var(--fs-xs)", height: "auto" }}
                           onClick={async () => {
                             if (bulkSending) return;
                             setBulkSending(true);
@@ -285,7 +286,7 @@ export function BulkSender({
                       style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: bulkSending ? "not-allowed" : "pointer", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "4px" }}
                       title="Remove file"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      <XIcon size={14} />
                     </button>
                   </div>
                 </div>
@@ -299,7 +300,7 @@ export function BulkSender({
         <>
           <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
             {bulkFiles.some(f => f.status === 'sent') && (
-              <span style={{ fontSize: "13px", color: "var(--success-color)", fontWeight: 500 }}>
+              <span style={{ fontSize: "var(--fs-md)", color: "var(--success-color)", fontWeight: 500 }}>
                 {bulkFiles.filter(f => f.status === 'sent').length} / {bulkFiles.length} sent
               </span>
             )}

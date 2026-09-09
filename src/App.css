@@ -34,6 +34,18 @@
   --radius-md: 10px;
   --radius-lg: 16px;
   
+  /* Type scale. Every font size in the app must come from this ladder — see
+     CLAUDE.md. --fs-badge is the one documented exception: the uppercase
+     micro-badges in the tab bar. */
+  --fs-badge: 9px;
+  --fs-micro: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 14px;
+  --fs-xl: 16px;
+  --fs-2xl: 18px;
+
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Monaco, Consolas, monospace;
   
@@ -120,7 +132,7 @@ body {
 
 .sidebar-header {
   padding: 16px 12px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -135,7 +147,7 @@ body {
   padding: 24px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-md);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -149,7 +161,7 @@ body {
   border: 1px solid rgba(244, 63, 94, 0.2);
   border-radius: var(--radius-md);
   color: var(--danger-color);
-  font-size: 13px;
+  font-size: var(--fs-md);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -174,7 +186,7 @@ body {
   background: transparent;
   border: none;
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   text-align: left;
   color: var(--text-primary);
@@ -197,7 +209,7 @@ body {
 
 .conn-name .arrow {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   transition: transform var(--transition-normal);
   display: inline-flex;
   align-items: center;
@@ -220,7 +232,7 @@ body {
 }
 
 .target-group-label {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -233,7 +245,7 @@ body {
   background: transparent;
   border: none;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--text-secondary);
   border-radius: var(--radius-sm);
@@ -287,7 +299,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 0 16px;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--text-secondary);
   border-right: 1px solid var(--border-color);
@@ -399,7 +411,7 @@ body {
 }
 
 .empty-state p {
-  font-size: 15px;
+  font-size: var(--fs-lg);
   max-width: 380px;
   color: var(--text-secondary);
 }
@@ -423,7 +435,7 @@ body {
 }
 
 .badge {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 800;
   letter-spacing: 0.05em;
   padding: 3px 8px;
@@ -444,7 +456,7 @@ body {
 }
 
 .target-name {
-  font-size: 18px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   color: var(--text-primary);
   display: flex;
@@ -453,7 +465,7 @@ body {
 }
 
 .type-tag {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-muted);
   background-color: var(--bg-hover);
@@ -463,7 +475,7 @@ body {
 }
 
 .field-label {
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-secondary);
   display: flex;
@@ -472,7 +484,7 @@ body {
 }
 
 .field-label .optional {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -484,7 +496,7 @@ select {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 12px 16px;
-  font-size: 14px;
+  font-size: var(--fs-lg);
   color: var(--text-primary);
   font-family: inherit;
   outline: none;
@@ -521,7 +533,7 @@ select:focus {
 }
 
 .send-status {
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 500;
   padding: 10px 16px;
   border-radius: var(--radius-md);
@@ -550,7 +562,7 @@ button {
   border-radius: var(--radius-md);
   color: var(--text-primary);
   padding: 10px 20px;
-  font-size: 14px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -645,7 +657,7 @@ button:disabled {
 }
 
 .ack-toggle label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   padding: 6px 12px;
@@ -669,7 +681,7 @@ button:disabled {
 }
 
 .consuming-badge {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--success-color);
   background-color: var(--success-bg);
@@ -702,7 +714,7 @@ button:disabled {
 }
 
 .msg-count {
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -712,7 +724,7 @@ button:disabled {
   background-color: var(--danger-bg);
   color: var(--danger-color);
   border-bottom: 1px solid rgba(244, 63, 94, 0.15);
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 /* Message List */
@@ -734,7 +746,7 @@ button:disabled {
   align-items: center;
   height: 200px;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--fs-lg);
 }
 
 /* Message Row UI */
@@ -763,7 +775,7 @@ button:disabled {
   align-items: center;
   padding: 12px 18px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-md);
   gap: 16px;
   user-select: none;
 }
@@ -778,7 +790,7 @@ button:disabled {
   width: 140px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   flex-shrink: 0;
 }
 
@@ -787,7 +799,7 @@ button:disabled {
   font-weight: 600;
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   flex-shrink: 0;
 }
 
@@ -795,7 +807,7 @@ button:disabled {
   flex-grow: 1;
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .col-arrow {
@@ -803,7 +815,7 @@ button:disabled {
   width: 20px;
   text-align: right;
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 /* Expanded Detail Section */
@@ -827,7 +839,7 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -837,7 +849,7 @@ button:disabled {
 .detail-header button,
 .detail-actions button {
   padding: 4px 10px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   border-radius: var(--radius-sm);
   background-color: var(--bg-panel);
   box-shadow: none;
@@ -862,7 +874,7 @@ button:disabled {
   border-radius: var(--radius-md);
   padding: 14px 18px;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   overflow-x: auto;
   max-height: 200px;
@@ -879,7 +891,7 @@ button:disabled {
 
 .detail-actions button {
   padding: 8px 16px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -915,7 +927,7 @@ button:disabled {
 }
 
 .mode-picker-title {
-  font-size: 18px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-color);
@@ -965,19 +977,19 @@ button:disabled {
 }
 
 .option-title {
-  font-size: 14px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .option-desc {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.4;
 }
 
 .font-small .option-title {
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 
@@ -1045,10 +1057,14 @@ button:disabled {
 .config-conn-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 8px;
   border-radius: 6px;
+  /* Negative side margins pull the row out to the panel edges so the hover
+     highlight is full-bleed while the label still lines up flush-left with the
+     section headings above it. */
   padding: 4px 8px;
-  margin-bottom: 4px;
+  margin: 0 -8px 4px -8px;
   transition: all var(--transition-fast);
 }
 
@@ -1060,13 +1076,50 @@ button:disabled {
   background-color: var(--bg-hover);
 }
 
+/* Config editor labels. Two roles only: a section heading above a list, and a
+   field label above an input. Both halves of the editor use the same two. */
+.config-section-label {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.config-field-label {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+/* Rows inside the config editor's queue/exchange lists. Same treatment as
+   .config-conn-item so both halves of the editor read identically. */
+.config-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  background: transparent;
+  transition: background-color var(--transition-fast);
+}
+
+.config-list-row:hover {
+  background-color: var(--bg-hover);
+}
+
 .config-conn-delete-btn {
   background: none;
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   opacity: 0.5;
   display: inline-flex;
   align-items: center;
@@ -1085,7 +1138,7 @@ button:disabled {
   color: var(--text-secondary);
   cursor: pointer;
   padding: 2px 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   opacity: 0.6;
   display: inline-flex;
   align-items: center;

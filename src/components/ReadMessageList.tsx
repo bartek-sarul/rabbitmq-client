@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useAppStore, EMPTY_MESSAGES } from "../store/useAppStore";
 import { MessageRow } from "./MessageRow";
 import { MessageDetailPanel } from "./MessageDetailPanel";
+import { SearchIcon, XIcon } from "./icons";
 
 type SearchTarget = "everywhere" | "headers" | "properties" | "body";
 
@@ -95,13 +96,13 @@ export function ReadMessageList({ tabId, started, loading }: Props) {
       {/* Filter Bar */}
       <div style={{ padding: "8px 16px", borderBottom: "1px solid var(--border-color)", backgroundColor: "var(--bg-secondary)", display: "flex", gap: "12px", alignItems: "center" }}>
         <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
-          <svg style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--text-muted)" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span style={{ display: "inline-flex", position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--text-muted)"  }}><SearchIcon size={14} /></span>
           <input
             type="text"
             placeholder="Regex search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: "100%", padding: "8px 32px", fontSize: "13px", height: "36px", boxSizing: "border-box" }}
+            style={{ width: "100%", padding: "8px 32px", fontSize: "var(--fs-md)", height: "36px", boxSizing: "border-box" }}
           />
           {searchQuery && (
             <button
@@ -109,21 +110,21 @@ export function ReadMessageList({ tabId, started, loading }: Props) {
               style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center" }}
               title="Clear search"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <XIcon size={14} />
             </button>
           )}
         </div>
         <select
           value={searchTarget}
           onChange={(e) => setSearchTarget(e.target.value as SearchTarget)}
-          style={{ padding: "8px 30px 8px 12px", fontSize: "13px", height: "36px", boxSizing: "border-box", width: "140px" }}
+          style={{ padding: "8px 30px 8px 12px", fontSize: "var(--fs-md)", height: "36px", boxSizing: "border-box", width: "140px" }}
         >
           <option value="everywhere">Everywhere</option>
           <option value="body">Body</option>
           <option value="headers">Headers</option>
           <option value="properties">Properties</option>
         </select>
-        <div style={{ fontSize: "12px", color: "var(--text-muted)", width: "60px", textAlign: "right" }}>
+        <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", width: "60px", textAlign: "right" }}>
           {filteredMessages.length} / {messages.length}
         </div>
       </div>
@@ -140,7 +141,7 @@ export function ReadMessageList({ tabId, started, loading }: Props) {
               borderRadius: "50%",
               animation: "spin 1s linear infinite"
             }}></div>
-            <p style={{ fontSize: "14px", marginTop: "16px" }}>Loading messages from disk...</p>
+            <p style={{ fontSize: "var(--fs-lg)", marginTop: "16px" }}>Loading messages from disk...</p>
             <style>{`
               @keyframes spin {
                 to { transform: rotate(360deg); }
@@ -152,7 +153,7 @@ export function ReadMessageList({ tabId, started, loading }: Props) {
             <svg className="empty-state-icon" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-            <p style={{ fontSize: "14px", marginTop: "8px" }}>
+            <p style={{ fontSize: "var(--fs-lg)", marginTop: "8px" }}>
               {messages.length > 0 && searchQuery
                 ? "No messages match your search filter."
                 : started

@@ -119,7 +119,7 @@ export function ReadTab({ tab }: Props) {
               {tab.targetName}
               <span className="type-tag">{tab.targetType}</span>
             </span>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px", display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", marginTop: "2px", display: "flex", alignItems: "center", gap: "6px" }}>
               Connection: <strong>{tab.connName}</strong>
               {tab.folderPath && (
                 <>
@@ -129,7 +129,7 @@ export function ReadTab({ tab }: Props) {
                     className="btn-secondary"
                     onClick={() => navigator.clipboard.writeText(tab.folderPath || "")}
                     title="Copy path location"
-                    style={{ padding: "2px 6px", fontSize: "10px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                    style={{ padding: "2px 6px", fontSize: "var(--fs-micro)", display: "inline-flex", alignItems: "center", gap: "4px" }}
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                   </button>
@@ -138,7 +138,7 @@ export function ReadTab({ tab }: Props) {
                     onClick={handleReloadFolder}
                     title="Reload from disk"
                     disabled={loadingMessages || started}
-                    style={{ padding: "2px 6px", fontSize: "10px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                    style={{ padding: "2px 6px", fontSize: "var(--fs-micro)", display: "inline-flex", alignItems: "center", gap: "4px" }}
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                   </button>
@@ -146,7 +146,7 @@ export function ReadTab({ tab }: Props) {
                     className="btn-secondary btn-open-folder"
                     onClick={handleOpenFolder}
                     title="See on disk"
-                    style={{ padding: "2px 6px", fontSize: "10px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                    style={{ padding: "2px 6px", fontSize: "var(--fs-micro)", display: "inline-flex", alignItems: "center", gap: "4px" }}
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                   </button>

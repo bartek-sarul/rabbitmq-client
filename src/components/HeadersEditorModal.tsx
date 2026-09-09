@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { XIcon } from "./icons";
 
 interface Props {
   initialHeadersJson: string;
@@ -125,7 +126,7 @@ export function HeadersEditorModal({ initialHeadersJson, onSave, onClose }: Prop
       }}>
         {/* Header */}
         <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: "16px", fontWeight: 700 }}>Headers Editor</span>
+          <span style={{ fontSize: "var(--fs-xl)", fontWeight: 700 }}>Headers Editor</span>
         </div>
 
         {/* Content */}
@@ -133,7 +134,7 @@ export function HeadersEditorModal({ initialHeadersJson, onSave, onClose }: Prop
           
           {/* Popular Headers */}
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>Popular Headers</label>
+            <label style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>Popular Headers</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
               {POPULAR_HEADERS.map(h => (
                 <button
@@ -147,7 +148,7 @@ export function HeadersEditorModal({ initialHeadersJson, onSave, onClose }: Prop
                     color: rows.some(r => r.key === h.key) ? "var(--text-muted)" : "var(--text-primary)",
                     padding: "6px 12px",
                     borderRadius: "20px",
-                    fontSize: "11px",
+                    fontSize: "var(--fs-xs)",
                     cursor: rows.some(r => r.key === h.key) ? "not-allowed" : "pointer",
                     display: "flex",
                     alignItems: "center",
@@ -163,11 +164,11 @@ export function HeadersEditorModal({ initialHeadersJson, onSave, onClose }: Prop
 
           {/* Current Headers Table */}
           <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-            <label style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>Headers</label>
+            <label style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>Headers</label>
             
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, overflowY: "auto", paddingRight: "4px" }}>
               {rows.length === 0 ? (
-                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "30px", textAlign: "center", color: "var(--text-muted)", background: "var(--bg-sidebar)", borderRadius: "8px", border: "1px dashed var(--border-color)", fontSize: "12px" }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "30px", textAlign: "center", color: "var(--text-muted)", background: "var(--bg-sidebar)", borderRadius: "8px", border: "1px dashed var(--border-color)", fontSize: "var(--fs-sm)" }}>
                   No headers added yet. Choose a popular header above or add a custom one.
                 </div>
               ) : (
@@ -178,13 +179,13 @@ export function HeadersEditorModal({ initialHeadersJson, onSave, onClose }: Prop
                       placeholder="Header Key"
                       value={row.key}
                       onChange={(e) => handleRowChange(i, "key", e.target.value)}
-                      style={{ flex: 1, height: "36px", boxSizing: "border-box", padding: "8px 12px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "6px", fontSize: "13px" }}
+                      style={{ flex: 1, height: "36px", boxSizing: "border-box", padding: "8px 12px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "6px", fontSize: "var(--fs-md)" }}
                     />
                     
                     <select
                       value={row.type}
                       onChange={(e) => handleRowChange(i, "type", e.target.value)}
-                      style={{ width: "110px", height: "36px", boxSizing: "border-box", padding: "8px 12px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "6px", fontSize: "13px" }}
+                      style={{ width: "110px", height: "36px", boxSizing: "border-box", padding: "8px 12px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "6px", fontSize: "var(--fs-md)" }}
                     >
                       <option value="string">String</option>
                       <option value="number">Number</option>
@@ -197,7 +198,7 @@ export function HeadersEditorModal({ initialHeadersJson, onSave, onClose }: Prop
                         <select
                           value={row.value ? "true" : "false"}
                           onChange={(e) => handleRowChange(i, "value", e.target.value === "true")}
-                          style={{ width: "100%", height: "36px", boxSizing: "border-box", padding: "8px 12px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "6px", fontSize: "13px" }}
+                          style={{ width: "100%", height: "36px", boxSizing: "border-box", padding: "8px 12px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "6px", fontSize: "var(--fs-md)" }}
                         >
                           <option value="true">true</option>
                           <option value="false">false</option>
@@ -208,7 +209,7 @@ export function HeadersEditorModal({ initialHeadersJson, onSave, onClose }: Prop
                           placeholder="Value"
                           value={row.value}
                           onChange={(e) => handleRowChange(i, "value", e.target.value)}
-                          style={{ width: "100%", height: "36px", boxSizing: "border-box", padding: "8px 12px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "6px", fontSize: "13px" }}
+                          style={{ width: "100%", height: "36px", boxSizing: "border-box", padding: "8px 12px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "6px", fontSize: "var(--fs-md)" }}
                         />
                       ) : (
                         <input
@@ -216,7 +217,7 @@ export function HeadersEditorModal({ initialHeadersJson, onSave, onClose }: Prop
                           placeholder={row.type === 'json' ? '{"foo": "bar"}' : "Value"}
                           value={row.value}
                           onChange={(e) => handleRowChange(i, "value", e.target.value)}
-                          style={{ width: "100%", height: "36px", boxSizing: "border-box", padding: "8px 12px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "6px", fontSize: "13px", fontFamily: row.type === 'json' ? 'var(--font-mono)' : 'inherit' }}
+                          style={{ width: "100%", height: "36px", boxSizing: "border-box", padding: "8px 12px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "6px", fontSize: "var(--fs-md)", fontFamily: row.type === 'json' ? 'var(--font-mono)' : 'inherit' }}
                         />
                       )}
                     </div>
@@ -226,7 +227,7 @@ export function HeadersEditorModal({ initialHeadersJson, onSave, onClose }: Prop
                       style={{ width: "36px", height: "36px", padding: 0, flexShrink: 0, background: "var(--danger-bg)", color: "var(--danger-color)", border: "1px solid rgba(244, 63, 94, 0.2)", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                       title="Remove Header"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      <XIcon size={14} />
                     </button>
                   </div>
                 ))
@@ -235,14 +236,14 @@ export function HeadersEditorModal({ initialHeadersJson, onSave, onClose }: Prop
             
             <button
               onClick={handleAddCustom}
-              style={{ marginTop: "12px", background: "none", border: "1px dashed var(--border-color)", color: "var(--text-secondary)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", width: "100%", transition: "all 0.2s" }}
+              style={{ marginTop: "12px", background: "none", border: "1px dashed var(--border-color)", color: "var(--text-secondary)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "var(--fs-sm)", width: "100%", transition: "all 0.2s" }}
             >
               + Add Custom Header
             </button>
           </div>
 
           {error && (
-            <div style={{ color: "var(--danger-color)", fontSize: "12px", padding: "8px", background: "var(--danger-bg)", borderRadius: "6px", border: "1px solid rgba(244, 63, 94, 0.2)" }}>
+            <div style={{ color: "var(--danger-color)", fontSize: "var(--fs-sm)", padding: "8px", background: "var(--danger-bg)", borderRadius: "6px", border: "1px solid rgba(244, 63, 94, 0.2)" }}>
               {error}
             </div>
           )}

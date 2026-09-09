@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { XIcon } from "./icons";
 
 interface Props {
   value: string;
@@ -47,7 +48,7 @@ export function AutocompleteInput({ value, onChange, options, placeholder, disab
         style={{
           width: "100%",
           padding: "8px 30px 8px 12px",
-          fontSize: "13px",
+          fontSize: "var(--fs-md)",
           height: "36px",
           boxSizing: "border-box",
           backgroundColor: disabled ? "var(--bg-secondary)" : undefined,
@@ -79,7 +80,7 @@ export function AutocompleteInput({ value, onChange, options, placeholder, disab
               }}
               style={{
                 padding: "8px 12px",
-                fontSize: "13px",
+                fontSize: "var(--fs-md)",
                 cursor: "pointer",
                 borderBottom: i < filteredOptions.length - 1 ? "1px solid var(--border-color)" : "none",
                 color: "var(--text-primary)"
@@ -112,12 +113,12 @@ export function AutocompleteInput({ value, onChange, options, placeholder, disab
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "11px",
+            fontSize: "var(--fs-xs)",
             lineHeight: 1
           }}
           title="Clear"
         >
-          ✕
+          <XIcon size={10} />
         </button>
       )}
     </div>

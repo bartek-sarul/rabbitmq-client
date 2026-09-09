@@ -43,12 +43,21 @@ src-tauri/src/
 
 ## Conventions that matter here
 
-- **Styling is inline `style={{…}}` objects**, plus a few shared classes in `src/App.css`
-  (`btn-primary`, `btn-secondary`, `input`, `mode-picker*`, `config-conn-item`, `ack-toggle`).
+- **Styling is inline `style={{…}}` objects**, plus shared classes in `src/App.css`
+  (`btn-primary`, `btn-secondary`, `input`, `mode-picker*`, `config-conn-item`, `config-list-row`,
+  `config-section-label`, `config-field-label`, `ack-toggle`).
   Colors always come from CSS variables (`var(--bg-primary)`, `var(--text-muted)`,
   `var(--accent-color)`, `var(--danger-color)`, …) — never hardcode a hex.
-- **Icons are inline SVG** (feather-style, `stroke="currentColor"`, `strokeWidth` 2–2.5). Copy an
-  existing one rather than adding an icon dependency.
+- **Font sizes come from the type scale**, never a raw px value:
+  `--fs-badge` 9 (uppercase micro-badges only) · `--fs-micro` 10 · `--fs-xs` 11 (labels) ·
+  `--fs-sm` 12 (dense UI) · `--fs-md` 13 (body/inputs) · `--fs-lg` 14 · `--fs-xl` 16 ·
+  `--fs-2xl` 18 (titles). Write `fontSize: "var(--fs-sm)"` in inline styles too.
+- **Icons live in `src/components/icons.tsx`.** `XIcon` is the only close/clear/remove glyph — do
+  not hand-roll another one, and never use a `✕` text character. Anything used in more than one
+  component moves into that file. House style: feather geometry on a 24x24 viewBox,
+  `stroke="currentColor"`, `strokeWidth` **2.5**, size from the 10 / 12 / 14 / 18 ladder
+  (10 in a dense row, 12 in a button, 14 standalone, 18 for headings). The single exception is the
+  60x60 `.empty-state-icon` illustration, which keeps a hairline stroke.
 - **No component library and no CSS framework.** Keep it that way; the bundle is deliberately small.
 - Types go in `src/types.ts`, not next to the component.
 - Rust commands return `Result<T, String>`; the frontend surfaces the string via a local
@@ -121,6 +130,9 @@ config path. The config path itself comes from the `get_config_path` command.
   (`configEditorModalSize.v2`, `configEditorLeftPanelWidth`). The left-panel resizer is a **sibling**
   of both panes, not a child of the left panel — the panel's `overflow: hidden` clips an absolutely
   positioned handle down to an unusable sliver.
+- Both halves of the config editor sit on `--bg-sidebar`, with inset surfaces (inputs, list
+  containers) on `--bg-primary` and list rows transparent until hovered. Keep the two halves
+  identical; they previously used the two colours in opposite roles.
 
 ## Releasing
 

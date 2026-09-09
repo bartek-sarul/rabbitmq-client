@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppConfig, ConnectionDef } from "../types";
 import { fuzzyMatch } from "../utils/fuzzyMatch";
+import { FolderIcon, SearchIcon, XIcon } from "./icons";
 
 interface Props {
   onClose: () => void;
@@ -29,7 +30,7 @@ const pathInputStyle: CSSProperties = {
   border: "1px solid var(--border-color)",
   color: "var(--text-primary)",
   borderRadius: "6px",
-  fontSize: "12px"
+  fontSize: "var(--fs-sm)"
 };
 
 const folderButtonStyle: CSSProperties = {
@@ -40,14 +41,6 @@ const folderButtonStyle: CSSProperties = {
   padding: "8px",
   borderColor: "var(--border-color)"
 };
-
-function FolderIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
 
 export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Props) {
   const [savePath, setSavePath] = useState(initialConfig?.save_path || "");
@@ -397,7 +390,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
           padding: "16px 24px",
           borderBottom: "1px solid var(--border-color)"
         }}>
-          <span style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>Configuration Editor</span>
+          <span style={{ fontSize: "var(--fs-xl)", fontWeight: 700, color: "var(--text-primary)" }}>Configuration Editor</span>
         </div>
 
         {/* Error Alert */}
@@ -407,7 +400,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
             borderBottom: "1px solid rgba(239, 68, 68, 0.2)",
             color: "var(--danger-color)",
             padding: "10px 24px",
-            fontSize: "13px"
+            fontSize: "var(--fs-md)"
           }}>
             {error}
           </div>
@@ -427,7 +420,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
             padding: "16px"
           }}>
             <div style={{ marginBottom: "16px" }}>
-              <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Configuration file path</label>
+              <label className="config-field-label">Configuration file path</label>
               <div style={{ display: "flex", gap: "6px" }}>
                 <input
                   type="text"
@@ -443,13 +436,13 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                   title={showFolderLabel}
                   aria-label={showFolderLabel}
                 >
-                  <FolderIcon />
+                  <FolderIcon size={14} />
                 </button>
               </div>
             </div>
 
             <div style={{ marginBottom: "20px" }}>
-              <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Message store folder</label>
+              <label className="config-field-label">Message store folder</label>
               <div style={{ display: "flex", gap: "6px" }}>
                 <input
                   type="text"
@@ -466,16 +459,16 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                   title={showFolderLabel}
                   aria-label={showFolderLabel}
                 >
-                  <FolderIcon />
+                  <FolderIcon size={14} />
                 </button>
               </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-              <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: "6px" }}>Connections</label>
+              <label className="config-section-label">Connections</label>
 
               <div style={{ position: "relative", display: "flex", alignItems: "center", marginBottom: "8px" }}>
-                <svg style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--text-muted)" }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <span style={{ display: "inline-flex", position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--text-muted)"  }}><SearchIcon size={12} /></span>
                 <input
                   type="text"
                   placeholder="Search connections…"
@@ -488,7 +481,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                     border: "1px solid var(--border-color)",
                     color: "var(--text-primary)",
                     borderRadius: "6px",
-                    fontSize: "12px",
+                    fontSize: "var(--fs-sm)",
                     boxSizing: "border-box"
                   }}
                 />
@@ -498,7 +491,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                     style={{ position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}
                     title="Clear search"
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <XIcon size={12} />
                   </button>
                 )}
               </div>
@@ -520,7 +513,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                         color: selectedConnIndex === i ? "var(--text-primary)" : "var(--text-secondary)",
                         textAlign: "left",
                         cursor: "pointer",
-                        fontSize: "13px",
+                        fontSize: "var(--fs-md)",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
@@ -538,15 +531,15 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                       className="config-conn-delete-btn"
                       title="Delete connection"
                     >
-                      ✕
+                      <XIcon size={10} />
                     </button>
                   </div>
                 ))}
                 {connections.length === 0 && (
-                  <div style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic", padding: "8px" }}>No connections added.</div>
+                  <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", fontStyle: "italic", padding: "8px" }}>No connections added.</div>
                 )}
                 {connections.length > 0 && connSearchQuery.trim() && !connections.some((c) => fuzzyMatch(connSearchQuery.trim(), c.name)) && (
-                  <div style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic", padding: "8px" }}>No connections match "{connSearchQuery.trim()}"</div>
+                  <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", fontStyle: "italic", padding: "8px" }}>No connections match "{connSearchQuery.trim()}"</div>
                 )}
               </div>
 
@@ -568,7 +561,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                     border: "1px solid var(--border-color)",
                     color: "var(--text-primary)",
                     borderRadius: "6px",
-                    fontSize: "12px"
+                    fontSize: "var(--fs-sm)"
                   }}
                 />
                 <button
@@ -580,7 +573,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                     padding: "6px 10px",
                     borderRadius: "6px",
                     cursor: "pointer",
-                    fontSize: "12px"
+                    fontSize: "var(--fs-sm)"
                   }}
                 >
                   Add
@@ -613,12 +606,19 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
           />
 
           {/* Right panel */}
-          <div style={{ flex: 1, padding: "24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <div style={{
+            flex: 1,
+            padding: "24px",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            background: "var(--bg-sidebar)"
+          }}>
             {selectedConn ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "20px", flex: 1, minHeight: 0 }}>
                 <div style={{ display: "flex", gap: "16px" }}>
                   <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: "12px", color: "var(--text-secondary)", display: "block", marginBottom: "6px" }}>Name</label>
+                    <label className="config-field-label">Name</label>
                     <input
                       type="text"
                       value={selectedConn.name}
@@ -626,19 +626,19 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                       style={{
                         width: "100%",
                         padding: "8px 12px",
-                        background: "var(--bg-sidebar)",
+                        background: "var(--bg-primary)",
                         border: "1px solid var(--border-color)",
                         color: "var(--text-primary)",
                         borderRadius: "6px",
-                        fontSize: "13px"
+                        fontSize: "var(--fs-md)"
                       }}
                     />
                   </div>
                   <div style={{ flex: 2 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
-                      <label style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0 }}>AMQP URL</label>
+                      <label className="config-field-label" style={{ marginBottom: 0 }}>AMQP URL</label>
                       <div className="tooltip-container" style={{ position: "relative", display: "inline-flex", cursor: "help" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-muted)" }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-muted)" }}>
                           <circle cx="12" cy="12" r="10"></circle>
                           <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                           <line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -655,7 +655,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                           color: "var(--text-primary)",
                           padding: "8px 12px",
                           borderRadius: "6px",
-                          fontSize: "11px",
+                          fontSize: "var(--fs-xs)",
                           lineHeight: 1.4,
                           boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
                           pointerEvents: "none",
@@ -674,11 +674,11 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                       style={{
                         width: "100%",
                         padding: "8px 12px",
-                        background: "var(--bg-sidebar)",
+                        background: "var(--bg-primary)",
                         border: "1px solid var(--border-color)",
                         color: "var(--text-primary)",
                         borderRadius: "6px",
-                        fontSize: "13px"
+                        fontSize: "var(--fs-md)"
                       }}
                     />
                   </div>
@@ -687,7 +687,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                 <div style={{ display: "flex", gap: "24px", flex: 1, minHeight: 0 }}>
                   {/* Queues list */}
                   <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>Queues</label>
+                    <label className="config-section-label">Queues</label>
                     <div style={{
                       border: "1px solid var(--border-color)",
                       borderRadius: "8px",
@@ -695,7 +695,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                       minHeight: 0,
                       overflowY: "auto",
                       padding: "8px",
-                      background: "var(--bg-sidebar)",
+                      background: "var(--bg-primary)",
                       marginBottom: "8px"
                     }}>
                       {selectedConn.queues.map((q, qi) => (
@@ -705,18 +705,8 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                             setEditingQueueIndex(qi);
                             setEditingQueueName(q.name);
                           }}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            color: "var(--text-primary)",
-                            background: "var(--bg-primary)",
-                            marginBottom: "4px",
-                            border: "1px solid var(--border-color)"
-                          }}
+                          className="config-list-row"
+                          style={{ fontSize: "var(--fs-sm)", color: "var(--text-primary)" }}
                         >
                           {editingQueueIndex === qi ? (
                             <input
@@ -732,9 +722,9 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                               style={{ 
                                 flex: 1, 
                                 padding: "2px 6px", 
-                                fontSize: "12px", 
-                                background: "var(--bg-sidebar)",
-                                border: "1px solid var(--primary-color)",
+                                fontSize: "var(--fs-sm)", 
+                                background: "var(--bg-primary)",
+                                border: "1px solid var(--accent-color)",
                                 borderRadius: "4px",
                                 color: "var(--text-primary)",
                                 outline: "none",
@@ -748,12 +738,12 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                             onClick={() => handleDeleteQueue(qi)}
                             className="config-item-delete-btn"
                           >
-                            ✕
+                            <XIcon size={10} />
                           </button>
                         </div>
                       ))}
                       {selectedConn.queues.length === 0 && (
-                        <div style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", marginTop: "50px" }}>No queues.</div>
+                        <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", marginTop: "50px" }}>No queues.</div>
                       )}
                     </div>
                     <div style={{ display: "flex", gap: "6px" }}>
@@ -769,7 +759,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                           border: "1px solid var(--border-color)",
                           color: "var(--text-primary)",
                           borderRadius: "6px",
-                          fontSize: "12px"
+                          fontSize: "var(--fs-sm)"
                         }}
                       />
                       <button
@@ -781,7 +771,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                           padding: "6px 10px",
                           borderRadius: "6px",
                           cursor: "pointer",
-                          fontSize: "12px"
+                          fontSize: "var(--fs-sm)"
                         }}
                       >
                         Add
@@ -791,7 +781,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
 
                   {/* Exchanges list */}
                   <div style={{ flex: 1.2, display: "flex", flexDirection: "column" }}>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>Exchanges</label>
+                    <label className="config-section-label">Exchanges</label>
                     <div style={{
                       border: "1px solid var(--border-color)",
                       borderRadius: "8px",
@@ -799,23 +789,14 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                       minHeight: 0,
                       overflowY: "auto",
                       padding: "8px",
-                      background: "var(--bg-sidebar)",
+                      background: "var(--bg-primary)",
                       marginBottom: "8px"
                     }}>
                       {selectedConn.exchanges.map((ex, exi) => (
                         <div 
                           key={exi} 
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            color: "var(--text-primary)",
-                            background: "var(--bg-primary)",
-                            marginBottom: "4px",
-                            border: "1px solid var(--border-color)"
-                          }}
+                          className="config-list-row"
+                          style={{ flexDirection: "column", alignItems: "stretch", fontSize: "var(--fs-sm)", color: "var(--text-primary)" }}
                         >
                           <div 
                             onDoubleClick={() => {
@@ -838,9 +819,9 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                                 style={{ 
                                   flex: 1, 
                                   padding: "2px 6px", 
-                                  fontSize: "12px", 
-                                  background: "var(--bg-sidebar)",
-                                  border: "1px solid var(--primary-color)",
+                                  fontSize: "var(--fs-sm)", 
+                                  background: "var(--bg-primary)",
+                                  border: "1px solid var(--accent-color)",
                                   borderRadius: "4px",
                                   color: "var(--text-primary)",
                                   outline: "none",
@@ -856,17 +837,17 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                               onClick={() => handleDeleteExchange(exi)}
                               className="config-item-delete-btn"
                             >
-                              ✕
+                              <XIcon size={10} />
                             </button>
                           </div>
 
                           <div style={{ marginTop: "4px", paddingTop: "4px", borderTop: "1px dashed var(--border-color)", display: "flex", flexDirection: "column", gap: "4px" }}>
-                            <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 500 }}>Predefined Routing Keys:</div>
+                            <div style={{ fontSize: "var(--fs-micro)", color: "var(--text-muted)", fontWeight: 500 }}>Predefined Routing Keys:</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
                               {ex.routing_keys?.map((rk, rki) => (
-                                <div key={rki} style={{ background: "var(--bg-sidebar)", padding: "2px 6px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "4px", border: "1px solid var(--border-color)", fontSize: "10px" }}>
+                                <div key={rki} style={{ background: "var(--bg-active)", padding: "2px 6px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "4px", border: "1px solid var(--border-color)", fontSize: "var(--fs-micro)" }}>
                                   {rk}
-                                  <button onClick={() => handleDeleteRoutingKey(exi, rki)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "10px", padding: 0, display: "flex" }}>✕</button>
+                                  <button onClick={() => handleDeleteRoutingKey(exi, rki)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "var(--fs-micro)", padding: 0, display: "flex" }}><XIcon size={10} /></button>
                                 </div>
                               ))}
                             </div>
@@ -875,7 +856,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                                 id={`rk-input-${exi}`}
                                 type="text"
                                 placeholder="Add key..."
-                                style={{ flex: 1, padding: "2px 6px", fontSize: "10px", background: "var(--bg-sidebar)", border: "1px solid var(--border-color)", borderRadius: "4px", color: "var(--text-primary)" }}
+                                style={{ flex: 1, padding: "2px 6px", fontSize: "var(--fs-micro)", background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "4px", color: "var(--text-primary)" }}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
                                     handleAddRoutingKey(exi, e.currentTarget.value);
@@ -898,7 +879,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                                   padding: "2px 8px",
                                   borderRadius: "4px",
                                   cursor: "pointer",
-                                  fontSize: "12px",
+                                  fontSize: "var(--fs-sm)",
                                   fontWeight: 500,
                                   display: "flex",
                                   alignItems: "center",
@@ -913,7 +894,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                         </div>
                       ))}
                       {selectedConn.exchanges.length === 0 && (
-                        <div style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", marginTop: "50px" }}>No exchanges.</div>
+                        <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", marginTop: "50px" }}>No exchanges.</div>
                       )}
                     </div>
                     <div style={{ display: "flex", gap: "6px" }}>
@@ -929,7 +910,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                           border: "1px solid var(--border-color)",
                           color: "var(--text-primary)",
                           borderRadius: "6px",
-                          fontSize: "12px"
+                          fontSize: "var(--fs-sm)"
                         }}
                       />
                       <button
@@ -941,7 +922,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                           padding: "6px 10px",
                           borderRadius: "6px",
                           cursor: "pointer",
-                          fontSize: "12px"
+                          fontSize: "var(--fs-sm)"
                         }}
                       >
                         Add
@@ -951,7 +932,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                 </div>
               </div>
             ) : (
-              <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontStyle: "italic", fontSize: "14px" }}>
+              <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontStyle: "italic", fontSize: "var(--fs-lg)" }}>
                 Select a connection to edit or add a new one.
               </div>
             )}
@@ -965,7 +946,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
           alignItems: "center",
           padding: "16px 24px",
           borderTop: "1px solid var(--border-color)",
-          background: "var(--bg-sidebar)"
+          background: "var(--bg-primary)"
         }}>
           <div />
           <div style={{ display: "flex", gap: "12px" }}>
@@ -998,7 +979,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                 <strong>Delete Connection?</strong>
               </div>
 
-              <div style={{ fontSize: "14px", color: "var(--text-secondary)", margin: "16px 0", lineHeight: "1.5" }}>
+              <div style={{ fontSize: "var(--fs-lg)", color: "var(--text-secondary)", margin: "16px 0", lineHeight: "1.5" }}>
                 Are you sure you want to delete connection "{connections[connToDeleteIndex]?.name || `Unnamed (${connToDeleteIndex + 1})`}"?
               </div>
 
