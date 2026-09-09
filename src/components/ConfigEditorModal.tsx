@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppConfig, ConnectionDef } from "../types";
+import { fuzzyMatch } from "../utils/fuzzyMatch";
 
 interface Props {
   onClose: () => void;
@@ -8,12 +9,44 @@ interface Props {
   initialConfig: AppConfig | null;
 }
 
+const MODAL_MIN_WIDTH = 700;
+const MODAL_MIN_HEIGHT = 450;
+const LEFT_PANEL_MIN_WIDTH = 180;
+
 export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Props) {
   const [savePath, setSavePath] = useState(initialConfig?.save_path || "");
   const [connections, setConnections] = useState<ConnectionDef[]>(initialConfig?.connections || []);
   const [selectedConnIndex, setSelectedConnIndex] = useState<number | null>(
     initialConfig?.connections && initialConfig.connections.length > 0 ? 0 : null
   );
+  const [connSearchQuery, setConnSearchQuery] = useState("");
+
+  const [modalSize, setModalSize] = useState<{ width: number; height: number }>(() => {
+    const saved = localStorage.getItem("configEditorModalSize");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.width === "number" && typeof parsed.height === "number") return parsed;
+      } catch {
+        // ignore malformed value
+      }
+    }
+    return { width: 850, height: 600 };
+  });
+
+  const [leftPanelWidth, setLeftPanelWidth] = useState<number>(() => {
+    const saved = localStorage.getItem("configEditorLeftPanelWidth");
+    const parsed = saved ? parseInt(saved, 10) : NaN;
+    return Number.isFinite(parsed) ? parsed : 250;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("configEditorModalSize", JSON.stringify(modalSize));
+  }, [modalSize]);
+
+  useEffect(() => {
+    localStorage.setItem("configEditorLeftPanelWidth", leftPanelWidth.toString());
+  }, [leftPanelWidth]);
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -236,8 +269,10 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
         background: "var(--bg-primary)",
         border: "1px solid var(--border-color)",
         borderRadius: "12px",
-        width: "850px",
-        height: "600px",
+        width: `${modalSize.width}px`,
+        height: `${modalSize.height}px`,
+        maxWidth: "95vw",
+        maxHeight: "95vh",
         display: "flex",
         flexDirection: "column",
         boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
@@ -272,14 +307,49 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
         <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
           {/* Left sidebar */}
           <div style={{
-            width: "250px",
+            width: `${leftPanelWidth}px`,
+            flexShrink: 0,
             borderRight: "1px solid var(--border-color)",
             display: "flex",
             flexDirection: "column",
             background: "var(--bg-sidebar)",
             overflow: "hidden",
-            padding: "16px"
+            padding: "16px",
+            position: "relative"
           }}>
+            {/* Left panel resize handle */}
+            <div
+              style={{
+                width: "8px",
+                cursor: "col-resize",
+                position: "absolute",
+                right: "-4px",
+                top: 0,
+                bottom: 0,
+                zIndex: 5
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                document.body.style.cursor = "col-resize";
+
+                const handleMouseMove = (me: MouseEvent) => {
+                  setLeftPanelWidth((prev) => {
+                    const max = Math.max(LEFT_PANEL_MIN_WIDTH, modalSize.width - 400);
+                    return Math.min(max, Math.max(LEFT_PANEL_MIN_WIDTH, prev + me.movementX));
+                  });
+                };
+
+                const handleMouseUp = () => {
+                  document.body.style.cursor = "";
+                  window.removeEventListener("mousemove", handleMouseMove);
+                  window.removeEventListener("mouseup", handleMouseUp);
+                };
+
+                window.addEventListener("mousemove", handleMouseMove);
+                window.addEventListener("mouseup", handleMouseUp);
+              }}
+            />
+
             <div style={{ marginBottom: "20px" }}>
               <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Configuration file path</label>
               <input
@@ -301,8 +371,41 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
 
             <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
               <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", display: "block", marginBottom: "6px" }}>Connections</label>
+
+              <div style={{ position: "relative", display: "flex", alignItems: "center", marginBottom: "8px" }}>
+                <svg style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--text-muted)" }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input
+                  type="text"
+                  placeholder="Search connections…"
+                  value={connSearchQuery}
+                  onChange={(e) => setConnSearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "6px 26px",
+                    background: "var(--bg-primary)",
+                    border: "1px solid var(--border-color)",
+                    color: "var(--text-primary)",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    boxSizing: "border-box"
+                  }}
+                />
+                {connSearchQuery && (
+                  <button
+                    onClick={() => setConnSearchQuery("")}
+                    style={{ position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    title="Clear search"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+                )}
+              </div>
+
               <div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1, overflowY: "auto", marginBottom: "16px" }}>
-                {connections.map((c, i) => (
+                {connections
+                  .map((c, i) => ({ c, i }))
+                  .filter(({ c }) => fuzzyMatch(connSearchQuery.trim(), c.name))
+                  .map(({ c, i }) => (
                   <div
                     key={i}
                     className={`config-conn-item ${selectedConnIndex === i ? "selected" : ""}`}
@@ -339,6 +442,9 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
                 ))}
                 {connections.length === 0 && (
                   <div style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic", padding: "8px" }}>No connections added.</div>
+                )}
+                {connections.length > 0 && connSearchQuery.trim() && !connections.some((c) => fuzzyMatch(connSearchQuery.trim(), c.name)) && (
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic", padding: "8px" }}>No connections match "{connSearchQuery.trim()}"</div>
                 )}
               </div>
 
@@ -804,6 +910,45 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
             </div>
           </div>
         )}
+
+        {/* Modal resize handle */}
+        <div
+          title="Resize"
+          style={{
+            width: "18px",
+            height: "18px",
+            position: "absolute",
+            right: 0,
+            bottom: 0,
+            cursor: "nwse-resize",
+            zIndex: 5
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            document.body.style.cursor = "nwse-resize";
+
+            const handleMouseMove = (me: MouseEvent) => {
+              setModalSize((prev) => ({
+                width: Math.min(window.innerWidth * 0.95, Math.max(MODAL_MIN_WIDTH, prev.width + me.movementX)),
+                height: Math.min(window.innerHeight * 0.95, Math.max(MODAL_MIN_HEIGHT, prev.height + me.movementY))
+              }));
+            };
+
+            const handleMouseUp = () => {
+              document.body.style.cursor = "";
+              window.removeEventListener("mousemove", handleMouseMove);
+              window.removeEventListener("mouseup", handleMouseUp);
+            };
+
+            window.addEventListener("mousemove", handleMouseMove);
+            window.addEventListener("mouseup", handleMouseUp);
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: "4px", bottom: "4px", color: "var(--text-muted)" }}>
+            <polyline points="21 15 21 21 15 21" />
+            <line x1="21" y1="21" x2="13" y2="13" />
+          </svg>
+        </div>
       </div>
     </div>
   );

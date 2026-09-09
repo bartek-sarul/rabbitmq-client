@@ -5,6 +5,7 @@ import { useAppStore } from "../store/useAppStore";
 import { v4 as uuidv4 } from "uuid";
 import { ConfigEditorModal } from "./ConfigEditorModal";
 import { open } from "@tauri-apps/plugin-dialog";
+import { fuzzyMatch } from "../utils/fuzzyMatch";
 
 interface OpenTabOptions {
   conn: ConnectionDef;
@@ -13,19 +14,6 @@ interface OpenTabOptions {
   mode: TabMode;
   ackMode: AckMode;
   folderPath?: string;
-}
-
-// Fuzzy subsequence match: every character of `query` must appear in `target`,
-// in order, but not necessarily contiguously (case-insensitive).
-function fuzzyMatch(query: string, target: string): boolean {
-  if (!query) return true;
-  const q = query.toLowerCase();
-  const t = target.toLowerCase();
-  let qi = 0;
-  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
-    if (t[ti] === q[qi]) qi++;
-  }
-  return qi === q.length;
 }
 
 export function Sidebar() {
