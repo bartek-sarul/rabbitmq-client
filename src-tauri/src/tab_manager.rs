@@ -34,8 +34,13 @@ pub struct ActiveTab {
     pub ack_mode: Option<AckMode>,
     pub target_name: String,
     pub target_type: TargetType,
-    pub conn_url: String,
+    /// Only the connection *name* is kept here; the AMQP URL (which carries
+    /// credentials) is resolved from the config file at connect time and never
+    /// travels through the frontend.
     pub conn_name: String,
+    /// True while a consumer task owns this tab, so a second `start_consumer`
+    /// cannot spawn a duplicate task against the same consumer tag.
+    pub consuming: bool,
 }
 
 pub struct TabManager(pub Mutex<HashMap<String, ActiveTab>>);
@@ -53,21 +58,27 @@ impl TabManager {
         TabManager(Mutex::new(HashMap::new()))
     }
 
+    /// A panic while the registry lock is held must not brick every later tab
+    /// command, so poisoning is recovered from rather than propagated.
+    fn tabs(&self) -> std::sync::MutexGuard<'_, HashMap<String, ActiveTab>> {
+        self.0.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     pub fn open_tab(&self, tab_id: String, tab: ActiveTab) {
-        self.0.lock().unwrap().insert(tab_id, tab);
+        self.tabs().insert(tab_id, tab);
     }
 
     pub fn close_tab_session(&self, tab_id: &str) {
-        if let Some(tab) = self.0.lock().unwrap().remove(tab_id) {
+        if let Some(tab) = self.tabs().remove(tab_id) {
             tab.cancel.cancel();
         }
     }
 
     pub fn get_publisher_info(&self, tab_id: &str) -> Result<(String, String, TargetType), String> {
-        let tabs = self.0.lock().unwrap();
+        let tabs = self.tabs();
         let tab = tabs.get(tab_id).ok_or_else(|| "Tab not found".to_string())?;
         Ok((
-            tab.conn_url.clone(),
+            tab.conn_name.clone(),
             tab.target_name.clone(),
             tab.target_type.clone(),
         ))
@@ -77,15 +88,18 @@ impl TabManager {
         &self,
         tab_id: &str,
         ack_mode: AckMode,
-    ) -> Result<(String, String, String, CancellationToken), String> {
-        let mut tabs = self.0.lock().unwrap();
+    ) -> Result<(String, String, CancellationToken), String> {
+        let mut tabs = self.tabs();
         let tab = tabs.get_mut(tab_id).ok_or_else(|| "Tab not found".to_string())?;
         if tab.mode != TabMode::Read {
             return Err("Tab is not a read tab".to_string());
         }
+        if tab.consuming {
+            return Err("This tab is already consuming".to_string());
+        }
         tab.ack_mode = Some(ack_mode);
+        tab.consuming = true;
         Ok((
-            tab.conn_url.clone(),
             tab.conn_name.clone(),
             tab.target_name.clone(),
             tab.cancel.clone(),
@@ -93,10 +107,11 @@ impl TabManager {
     }
 
     pub fn stop_consumer_session(&self, tab_id: &str) -> Result<(), String> {
-        let mut tabs = self.0.lock().unwrap();
+        let mut tabs = self.tabs();
         if let Some(tab) = tabs.get_mut(tab_id) {
             tab.cancel.cancel();
             tab.cancel = CancellationToken::new();
+            tab.consuming = false;
             Ok(())
         } else {
             Err("Tab not found".to_string())
@@ -126,8 +141,8 @@ mod tests {
             ack_mode: Some(AckMode::Ack),
             target_name: "queue-1".to_string(),
             target_type: TargetType::Queue,
-            conn_url: "amqp://localhost".to_string(),
             conn_name: "local".to_string(),
+            consuming: false,
         };
 
         manager.open_tab("tab-1".to_string(), tab);
@@ -140,7 +155,6 @@ mod tests {
             assert_eq!(retrieved.ack_mode, Some(AckMode::Ack));
             assert_eq!(retrieved.target_name, "queue-1");
             assert_eq!(retrieved.target_type, TargetType::Queue);
-            assert_eq!(retrieved.conn_url, "amqp://localhost");
             assert_eq!(retrieved.conn_name, "local");
             assert!(!retrieved.cancel.is_cancelled());
         }
@@ -148,6 +162,56 @@ mod tests {
         // Cancel via stop_consumer_session
         manager.stop_consumer_session("tab-1").unwrap();
         assert!(cancel_token.is_cancelled());
+    }
+
+    fn read_tab(name: &str) -> ActiveTab {
+        ActiveTab {
+            cancel: CancellationToken::new(),
+            mode: TabMode::Read,
+            ack_mode: None,
+            target_name: name.to_string(),
+            target_type: TargetType::Queue,
+            conn_name: "local".to_string(),
+            consuming: false,
+        }
+    }
+
+    #[test]
+    fn test_start_consumer_session_rejects_a_second_consumer() {
+        let manager = TabManager::new();
+        manager.open_tab("tab-1".to_string(), read_tab("q1"));
+
+        assert!(manager.start_consumer_session("tab-1", AckMode::Ack).is_ok());
+        assert!(manager.start_consumer_session("tab-1", AckMode::Ack).is_err());
+
+        // Stopping releases the slot so the tab can be restarted.
+        manager.stop_consumer_session("tab-1").unwrap();
+        assert!(manager.start_consumer_session("tab-1", AckMode::Ack).is_ok());
+    }
+
+    #[test]
+    fn test_start_consumer_session_rejects_write_tabs() {
+        let manager = TabManager::new();
+        let mut tab = read_tab("q1");
+        tab.mode = TabMode::Write;
+        manager.open_tab("tab-1".to_string(), tab);
+
+        assert!(manager.start_consumer_session("tab-1", AckMode::Ack).is_err());
+    }
+
+    #[test]
+    fn test_lock_survives_poisoning() {
+        let manager = Arc::new(TabManager::new());
+        let poisoner = Arc::clone(&manager);
+        let _ = std::thread::spawn(move || {
+            let _guard = poisoner.0.lock().unwrap();
+            panic!("poison the registry lock");
+        })
+        .join();
+
+        // Would panic if the guard propagated poisoning.
+        manager.open_tab("tab-1".to_string(), read_tab("q1"));
+        assert!(manager.get_publisher_info("tab-1").is_ok());
     }
 
     #[test]

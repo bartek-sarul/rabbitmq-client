@@ -23,7 +23,7 @@ export function TabBar() {
       (t) =>
         t.id !== tab.id &&
         t.mode === "read" &&
-        t.connUrl === tab.connUrl &&
+        t.connName === tab.connName &&
         t.targetName === tab.targetName
     );
   };

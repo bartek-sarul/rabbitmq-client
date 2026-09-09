@@ -76,14 +76,28 @@ message writes to the store.
 ## Backend model
 
 - `TabManager(Mutex<HashMap<String, ActiveTab>>)` — one entry per open tab, holding the AMQP
-  `ack_mode`, target info, and a `CancellationToken`. `stop_consumer_session` cancels and swaps in a
-  fresh token so the tab can be restarted.
-- `ConnectionPool` — publisher connections keyed by AMQP URL, reused across sends.
+  `ack_mode`, target info, a `CancellationToken`, and a `consuming` flag that stops a second
+  `start_consumer` from spawning a duplicate task on the same consumer tag.
+  `stop_consumer_session` cancels, swaps in a fresh token, and clears the flag.
+- `ConnectionPool` — publisher connections keyed by AMQP URL, reused across sends. Never hold the
+  pool mutex across `Connection::connect().await`; that serializes every publish in the app.
 - `start_consumer` spawns a Tokio task: connect → `basic_consume` → for each delivery write
-  `<folder>/<uuid>.json`, emit `msg-{tabId}`, then ACK or NACK(requeue) per `ack_mode`. Status is
-  broadcast on `status-{tabId}` as `connecting | consuming | disconnected`.
+  `<folder>/<millis>_<uuid>.json`, emit `msg-{tabId}`, then ACK (Consume) or leave the delivery
+  unacked (Peek). Status is broadcast on `status-{tabId}` as `connecting | consuming |
+  disconnected`, and failures on `consumer-error-{tabId}`.
 - `MessageListenerManager.tsx` is the only place that registers Tauri event listeners. It reconciles
   listeners against consuming read tabs; do not `listen()` anywhere else.
+
+### Credentials and paths
+
+- The frontend never sees an AMQP URL. `open_tab` takes a connection **name**; the backend resolves
+  it to a URL (expanding `${VAR}` from the environment) at connect time via `url_for_connection`.
+  Do not add a command that returns a connection URL to JS.
+- Every filesystem command the webview can reach runs its argument through `ensure_within_message_root`,
+  which canonicalizes the path and rejects anything outside `save_path`. The one deliberate exception
+  is `read_picked_file`, which serves the native file dialog in bulk send.
+- `tauri.conf.json` sets a real CSP. The bundle must stay free of inline scripts and `eval` — the
+  build has neither today.
 
 ## Config
 
@@ -94,11 +108,19 @@ config path. The config path itself comes from the `get_config_path` command.
 ## Behaviour to preserve
 
 - New consumer tabs default to **Consume (ACK)** — `DEFAULT_ACK_MODE` in `Sidebar.tsx`.
+- **Peek (NACK) does not nack.** It leaves deliveries unacknowledged and lets the broker requeue them
+  when the connection closes. Nacking with `requeue: true` hands the same message straight back and
+  spins at broker speed, writing a fresh file per redelivery — do not reintroduce it.
+- `messages` is capped at `MAX_MESSAGES_PER_TAB` (2000) per tab; older messages stay on disk.
+- `lastReceived` is stamped only for tabs that are **not** active — it drives the background-activity
+  flash, and stamping it for the active tab rewrote the tab array on every delivery.
 - Payload search in `MessageDetailPanel.tsx` uses a hand-rolled unicode-token → `escapeHtml` →
   `<mark>` pipeline with `dangerouslySetInnerHTML`. It is deliberate and performance-critical for
   multi-MB payloads; read the comments before touching it, and never inject unescaped payload text.
 - The config editor modal's size and left-panel width persist to `localStorage`
-  (`configEditorModalSize.v2`, `configEditorLeftPanelWidth`).
+  (`configEditorModalSize.v2`, `configEditorLeftPanelWidth`). The left-panel resizer is a **sibling**
+  of both panes, not a child of the left panel — the panel's `overflow: hidden` clips an absolutely
+  positioned handle down to an unusable sliver.
 
 ## Releasing
 

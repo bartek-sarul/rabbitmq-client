@@ -16,6 +16,12 @@ function escapeHtml(unsafe: string) {
     .replace(/'/g, "&#039;");
 }
 
+type CopyMode = "payload" | "all";
+
+/// Above this payload size hljs tokenizing plus the resulting VDOM costs more
+/// than the highlighting is worth, so the raw <pre> path is used instead.
+const SYNTAX_HIGHLIGHT_MAX_CHARS = 10000;
+
 SyntaxHighlighter.registerLanguage('json', json);
 SyntaxHighlighter.registerLanguage('xml', xml);
 
@@ -54,7 +60,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
 
   const writerTabs = tabs.filter(t => t.mode === "write");
   const [showCopyToWriter, setShowCopyToWriter] = useState(false);
-  const [copyMode, setCopyMode] = useState<"payload" | "all">("payload");
+  const [copyMode, setCopyMode] = useState<CopyMode>("payload");
   const [selectedWriterId, setSelectedWriterId] = useState<string>("");
 
   useEffect(() => {
@@ -381,7 +387,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                 </div>
                 <div style={{ position: "relative", flexGrow: 1, minHeight: "200px" }}>
                   <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-                    {bodyText.length > 50000 || highlightedHtml ? (
+                    {bodyText.length > SYNTAX_HIGHLIGHT_MAX_CHARS || highlightedHtml ? (
                       <pre 
                         style={{ margin: 0, height: "100%", borderRadius: "6px", padding: "12px", fontSize: "12px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-color)", overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all", color: "var(--text-primary)" }}
                         dangerouslySetInnerHTML={highlightedHtml ? { __html: highlightedHtml } : undefined}
@@ -465,7 +471,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                       {writerTabs.map(t => <option key={t.id} value={t.id}>{t.label} ({t.connName} - {t.targetName})</option>)}
                       {writerTabs.length === 0 && <option value="" disabled>No writers open</option>}
                    </select>
-                   <select value={copyMode} onChange={e => setCopyMode(e.target.value as any)} style={{ width: "120px", padding: "6px 8px", fontSize: "12px", borderRadius: "4px", border: "1px solid var(--border-color)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
+                   <select value={copyMode} onChange={e => setCopyMode(e.target.value as CopyMode)} style={{ width: "120px", padding: "6px 8px", fontSize: "12px", borderRadius: "4px", border: "1px solid var(--border-color)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
                      <option value="payload">Payload only</option>
                      <option value="all">All (inc. props)</option>
                    </select>

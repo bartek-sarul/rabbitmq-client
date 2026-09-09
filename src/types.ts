@@ -28,7 +28,6 @@ export type TabStatus = "connecting" | "consuming" | "disconnected";
 export interface Tab {
   id: string;
   connName: string;
-  connUrl: string;
   targetName: string;
   targetType: TargetType;
   mode: TabMode;
@@ -39,6 +38,7 @@ export interface Tab {
   folderPath?: string;
   folderName?: string;
   lastReceived?: number;
+  lastError?: string;
   body?: string;
   routingKey?: string;
   contentType?: string;

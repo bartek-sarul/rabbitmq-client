@@ -21,7 +21,10 @@ const DEFAULT_ACK_MODE: AckMode = "ack";
 
 export function Sidebar() {
   const [config, setConfig] = useState<AppConfig | null>(null);
+  // A config error replaces the whole sidebar; an action error (failing to open
+  // a tab) must not, or one bad connection hides the connection list.
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<{ conn: ConnectionDef; targetName: string; targetType: TargetType } | null>(null);
   const [modeChoice, setModeChoice] = useState<TabMode>("read");
@@ -78,6 +81,10 @@ export function Sidebar() {
   }, [pending, showConfigEditor]);
 
   useEffect(() => {
+    // Switching targets quickly would otherwise let a slow response for the
+    // previous target overwrite the path for the current one.
+    let cancelled = false;
+
     async function initFolder() {
       if (!pending || modeChoice !== "read") return;
       const stored = localStorage.getItem(`last_folder_${pending.conn.name}_${pending.targetName}`);
@@ -91,13 +98,15 @@ export function Sidebar() {
             connName: pending.conn.name,
             targetName: pending.targetName
           });
-          setFolderPath(defaultPath);
+          if (!cancelled) setFolderPath(defaultPath);
         } catch (e) {
-          console.error(e);
+          if (!cancelled) setActionError(String(e));
         }
       }
     }
+
     initFolder();
+    return () => { cancelled = true; };
   }, [pending?.conn.name, pending?.targetName, modeChoice]);
 
   async function handleCheckboxChange(checked: boolean) {
@@ -114,7 +123,7 @@ export function Sidebar() {
         });
         setFolderPath(defaultPath);
       } catch (e) {
-        console.error(e);
+        setActionError(String(e));
       }
     }
   }
@@ -155,6 +164,7 @@ export function Sidebar() {
 
   function selectTarget(conn: ConnectionDef, targetName: string, targetType: TargetType) {
 
+    setActionError(null);
     setPending({ conn, targetName, targetType });
     if (targetType === "exchange") {
       setModeChoice("write");
@@ -179,7 +189,6 @@ export function Sidebar() {
     try {
       await invoke("open_tab", {
         tabId,
-        connUrl: opts.conn.url,
         connName: opts.conn.name,
         targetName: opts.targetName,
         targetType: opts.targetType,
@@ -189,7 +198,6 @@ export function Sidebar() {
       addTab({
         id: tabId,
         connName: opts.conn.name,
-        connUrl: opts.conn.url,
         targetName: opts.targetName,
         targetType: opts.targetType,
         mode: opts.mode,
@@ -200,7 +208,7 @@ export function Sidebar() {
       });
       setPending(null);
     } catch (e) {
-      setError(String(e));
+      setActionError(String(e));
     } finally {
       setOpening(false);
     }
@@ -501,6 +509,12 @@ export function Sidebar() {
                 </div>
               </div>
             </div>
+
+            {actionError && (
+              <div style={{ color: "var(--danger-color)", fontSize: "12px", padding: "0 4px 8px" }}>
+                {actionError}
+              </div>
+            )}
 
             <div className="mode-picker-actions">
               <button className="btn-secondary" onClick={() => setPending(null)}>Cancel</button>

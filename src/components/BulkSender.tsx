@@ -49,6 +49,13 @@ export function BulkSender({
   const abortRef = useRef<boolean>(false);
   const updateTab = useAppStore((s) => s.updateTab);
 
+  /// Updates one row by path. Rows are addressed by path rather than index
+  /// because the rendered list is filtered, and the send loop runs long enough
+  /// for the array to have been replaced underneath a captured snapshot.
+  function setFileStatus(path: string, patch: Partial<BulkFile>) {
+    setBulkFiles((prev) => prev.map((f) => (f.path === path ? { ...f, ...patch } : f)));
+  }
+
   async function handleBulkSelect() {
     try {
       const selected = await open({
@@ -91,7 +98,7 @@ export function BulkSender({
       setBulkFiles([...currentFiles]);
 
       try {
-        const content = await invoke<string>("read_message_file", { path: f.path });
+        const content = await invoke<string>("read_picked_file", { path: f.path });
         
         let finalCorrelationId = currentCorrId.trim() || null;
         let finalMessageId = currentMsgId.trim() || null;
@@ -118,7 +125,7 @@ export function BulkSender({
           },
         });
 
-        currentFiles[i] = { ...f, status: 'sent' };
+        currentFiles[i] = { ...f, status: 'sent', errorMsg: undefined };
         if (autoCorrelationId) currentCorrId = uuidv4();
         if (autoMessageId) currentMsgId = uuidv4();
 
@@ -131,7 +138,7 @@ export function BulkSender({
       setBulkFiles([...currentFiles]);
     }
 
-    const updates: any = {};
+    const updates: Partial<Tab> = {};
     if (autoCorrelationId) updates.correlationId = currentCorrId;
     if (autoMessageId) updates.messageId = currentMsgId;
     if (Object.keys(updates).length > 0) updateTab(tab.id, updates);
@@ -197,10 +204,10 @@ export function BulkSender({
             {bulkFiles.length === 0 ? (
               <div style={{ color: "var(--text-muted)", fontSize: "13px", textAlign: "center", marginTop: "24px" }}>No files selected. Click "Select files" to add JSON payloads.</div>
             ) : (
-              bulkFiles.map((file, idx) => {
+              bulkFiles.map((file) => {
                 if (statusFilter !== 'all' && file.status !== statusFilter && !(statusFilter === 'pending' && file.status === 'sending')) return null;
                 return (
-                <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px", backgroundColor: "var(--bg-secondary)", borderRadius: "4px", flexShrink: 0 }}>
+                <div key={file.path} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px", backgroundColor: "var(--bg-secondary)", borderRadius: "4px", flexShrink: 0 }}>
                   <div style={{ display: "flex", flexDirection: "column", maxWidth: "70%" }}>
                     <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{file.name}</span>
                     {file.errorMsg && <span style={{ fontSize: "11px", color: "var(--danger-color)", marginTop: "2px" }}>{file.errorMsg}</span>}
@@ -227,12 +234,10 @@ export function BulkSender({
                           onClick={async () => {
                             if (bulkSending) return;
                             setBulkSending(true);
-                            const updated = [...bulkFiles];
-                            updated[idx] = { ...file, status: 'sending', errorMsg: undefined };
-                            setBulkFiles([...updated]);
+                            setFileStatus(file.path, { status: 'sending', errorMsg: undefined });
                             
                             try {
-                              const content = await invoke<string>("read_message_file", { path: file.path });
+                              const content = await invoke<string>("read_picked_file", { path: file.path });
 
                               let finalCorrelationId = correlationId.trim() || null;
                               let finalMessageId = messageId.trim() || null;
@@ -256,16 +261,15 @@ export function BulkSender({
                                   message_id: finalMessageId,
                                 },
                               });
-                              updated[idx] = { ...updated[idx], status: 'sent' };
-                              
-                              const updatesObj: any = {};
+                              setFileStatus(file.path, { status: 'sent', errorMsg: undefined });
+
+                              const updatesObj: Partial<Tab> = {};
                               if (autoCorrelationId) updatesObj.correlationId = uuidv4();
                               if (autoMessageId) updatesObj.messageId = uuidv4();
                               if (Object.keys(updatesObj).length > 0) updateTab(tab.id, updatesObj);
                             } catch (e) {
-                              updated[idx] = { ...updated[idx], status: 'error', errorMsg: String(e) };
+                              setFileStatus(file.path, { status: 'error', errorMsg: String(e) });
                             }
-                            setBulkFiles([...updated]);
                             setBulkSending(false);
                           }}
                           disabled={bulkSending}
@@ -276,7 +280,7 @@ export function BulkSender({
                     )}
                     <button
                       type="button"
-                      onClick={() => setBulkFiles(prev => prev.filter((_, i) => i !== idx))}
+                      onClick={() => setBulkFiles(prev => prev.filter(f => f.path !== file.path))}
                       disabled={bulkSending}
                       style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: bulkSending ? "not-allowed" : "pointer", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "4px" }}
                       title="Remove file"

@@ -70,7 +70,7 @@ export function WriteTab({ tab }: Props) {
     }
   }, [tab.headers]);
 
-  function handleTextChange(field: string, val: string) {
+  function handleTextChange(field: keyof Tab, val: string) {
     updateTab(tab.id, { [field]: sanitizeQuotes(val) });
   }
 
@@ -94,7 +94,7 @@ export function WriteTab({ tab }: Props) {
         },
       });
       setStatus({ ok: true, msg: "Message sent." });
-      const updates: any = {};
+      const updates: Partial<Tab> = {};
       if (autoCorrelationId) updates.correlationId = uuidv4();
       if (autoMessageId) updates.messageId = uuidv4();
       if (Object.keys(updates).length > 0) {
@@ -245,7 +245,7 @@ export function WriteTab({ tab }: Props) {
                 checked={autoCorrelationId}
                 onChange={(e) => {
                   const checked = e.target.checked;
-                  const updates: any = { autoCorrelationId: checked };
+                  const updates: Partial<Tab> = { autoCorrelationId: checked };
                   if (checked) updates.correlationId = uuidv4();
                   updateTab(tab.id, updates);
                 }}
@@ -302,7 +302,7 @@ export function WriteTab({ tab }: Props) {
                 checked={autoMessageId}
                 onChange={(e) => {
                   const checked = e.target.checked;
-                  const updates: any = { autoMessageId: checked };
+                  const updates: Partial<Tab> = { autoMessageId: checked };
                   if (checked) updates.messageId = uuidv4();
                   updateTab(tab.id, updates);
                 }}

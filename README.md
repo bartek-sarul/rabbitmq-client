@@ -20,12 +20,12 @@ This document is the architectural reference for the RabbitMQ Desktop Client: ev
 * **YAML Based**: Saves environment connections, queues, and exchanges securely to `~/.rabbit-client.yaml`.
 * **Visual Config Editor**: Built-in modal for visually editing the config. Instantly parses, validates, and reloads the left sidebar without requiring application restarts.
 * **Connection Search**: Fuzzy subsequence search over the connection list (in both the sidebar and the config editor), so `prd` matches `payments-prod-eu`.
-* **Resizable Editor**: The config editor can be resized from its bottom-right corner and its connection panel dragged wider; both dimensions persist between sessions.
+* **Resizable Editor**: The config editor can be resized from its bottom-right corner, and the divider between the connection list and the editor can be dragged left or right (double-click it to reset). Both dimensions persist between sessions.
 * **Path Shortcuts**: The editor shows the **configuration file path** and the **message store folder** side by side, each with a folder button that reveals it in Finder / Explorer / the system file manager.
 
 ### Consumer Tab (Read Mode)
 ![Consumer Stream UI](docs/screenshots/03-consumer-tab.png)
-* **ACK / NACK Control**: Choose between **Consume (ACK)**, the default, which permanently dequeues messages, or **Peek (NACK)** which reads them while leaving them on the broker.
+* **ACK / NACK Control**: Choose between **Consume (ACK)**, the default, which permanently dequeues messages, or **Peek (NACK)** which reads them while leaving them on the broker. Peek holds each delivery unacknowledged for the life of the session, so every message is read exactly once and the whole batch is returned to the queue the moment you disconnect.
 * **Live Streaming & UI**: Split-pane layout. Left side shows a streaming list of incoming messages with timestamps. Right side is a detailed inspector.
 * **High-Performance Payload Search**: 
   * The message payload inspector features a blazing-fast, case-insensitive text search.
@@ -169,15 +169,16 @@ pub struct ConnectionPool(pub tokio::sync::Mutex<HashMap<String, Connection>>);
 | `parse_yaml_config` | `content` | Parses and validates YAML without writing, for live editor feedback. |
 | `get_config_path` | None | Returns the absolute path of `~/.rabbit-client.yaml` for display in the editor. |
 | `show_config_in_file_manager` | None | Reveals the config file in Finder / Explorer / the file manager. |
-| `open_tab` | `tab_id`, `conn_url`, `conn_name`, `target_name`, `target_type`, `mode`, `ack_mode` | Inserts tab state metadata into the `TabManager`. |
+| `open_tab` | `tab_id`, `conn_name`, `target_name`, `target_type`, `mode`, `ack_mode` | Inserts tab state metadata into the `TabManager`. Takes a connection *name*: AMQP URLs (and their credentials) are resolved backend-side and never reach the frontend. |
 | `close_tab` | `tab_id` | Cancels any active consumer loop and removes metadata. |
 | `send_message` | `tab_id`, `body`, `routing_key`, `headers`, `properties` | Publishes over a pooled connection, confirms, and closes the channel. |
 | `start_consumer` | `tab_id`, `ack_mode: AckMode` | Spawns a background Tokio task to loop and consume messages, returning folder path details. |
 | `stop_consumer` | `tab_id` | Signals the background loop to cancel and exit gracefully. |
 | `generate_default_folder_path` | `conn_name`, `target_name` | Builds the timestamped message-store subfolder path under `save_path`. |
 | `load_folder_messages` | `folder_path` | Re-reads a previously used message folder so a reopened tab shows its history. |
-| `read_message_file` | `path` | Reads a message's full payload JSON file from disk on demand. |
-| `open_folder` | `path` | Spawns Finder (mac), Explorer (Win), or xdg-open (Linux) for the specified directory. |
+| `read_message_file` | `path` | Reads a message's full payload JSON file from disk on demand. Confined to the message store folder. |
+| `read_picked_file` | `path` | Reads a file chosen in the native dialog, for bulk publishing. |
+| `open_folder` | `path` | Spawns Finder (mac), Explorer (Win), or xdg-open (Linux) for the specified directory. Confined to the message store folder. |
 | `exit_app` | `AppHandle` | Gracefully and instantly force-kills the native process to bypass Javascript event loop. |
 
 ---
@@ -240,8 +241,10 @@ interface AppStore {
 
 *   `addTab` seeds an empty message list and focuses the new tab.
 *   `removeTab` drops the tab's messages and falls back to the last remaining tab.
-*   `addMessage` prepends the message and stamps `lastReceived` on the tab, which is what drives the
-    unread dot on inactive tabs in the `TabBar`.
+*   `addMessage` prepends the message, capping each tab's list at `MAX_MESSAGES_PER_TAB` (2000);
+    everything received is still on disk in the tab's message folder.
+*   `lastReceived` is stamped only for tabs that are not currently focused, which is what drives the
+    activity flash on background tabs in the `TabBar`.
 
 ### Rendering Strategy
 *   **Every tab stays mounted.** `App.tsx` renders all tabs and hides the inactive ones with
@@ -259,8 +262,9 @@ mounted once by `App.tsx` and renders nothing.
 
 *   It keeps a `useRef<Map<tabId, UnlistenFn[]>>` of live subscriptions.
 *   On every store change it reconciles that map against the set of read tabs currently consuming:
-    tabs that started consuming get `msg-{tabId}` and `status-{tabId}` listeners; tabs that stopped
-    or were closed have their `unlisten()` functions invoked and their entry dropped.
+    tabs that started consuming get `msg-{tabId}`, `status-{tabId}` and `consumer-error-{tabId}`
+    listeners; tabs that stopped or were closed have their `unlisten()` functions invoked and their
+    entry dropped.
 *   A final unmount effect tears down everything remaining.
 
 Because registration is asynchronous, a placeholder entry is inserted synchronously to stop a second

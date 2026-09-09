@@ -19,26 +19,29 @@ export function MessageListenerManager() {
 
         if (!activeListeners.current.has(tab.id)) {
           const tabId = tab.id;
-          const msgEventName = `msg-${tabId}`;
-          const statusEventName = `status-${tabId}`;
-          
+
           // Set an empty array as a placeholder to prevent duplicate registrations
           activeListeners.current.set(tabId, []);
 
           Promise.all([
-            listen<Message>(msgEventName, (event) => {
+            listen<Message>(`msg-${tabId}`, (event) => {
               addMessage(tabId, event.payload);
             }),
-            listen<TabStatus>(statusEventName, (event) => {
+            listen<TabStatus>(`status-${tabId}`, (event) => {
               updateTab(tabId, { status: event.payload });
+            }),
+            listen<string>(`consumer-error-${tabId}`, (event) => {
+              updateTab(tabId, { lastError: event.payload });
             })
-          ]).then(([unlistenMsg, unlistenStatus]) => {
-            // Check if this tab is still consuming
-            if (activeTabIds.has(tabId)) {
-              activeListeners.current.set(tabId, [unlistenMsg, unlistenStatus]);
+          ]).then((unlisteners) => {
+            // Check the live ref, not the snapshot this effect run captured: the
+            // tab may have stopped consuming while `listen()` was in flight, in
+            // which case the cleanup pass below has already dropped its entry
+            // and nothing would ever unlisten these.
+            if (activeListeners.current.has(tabId)) {
+              activeListeners.current.set(tabId, unlisteners);
             } else {
-              unlistenMsg();
-              unlistenStatus();
+              for (const unlisten of unlisteners) unlisten();
             }
           });
         }

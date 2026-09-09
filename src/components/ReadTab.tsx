@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Tab } from "../types";
+import { Message, Tab } from "../types";
 import { useAppStore } from "../store/useAppStore";
 import { ReadMessageList } from "./ReadMessageList";
 import { useEffect, useRef } from "react";
@@ -32,13 +32,12 @@ export function ReadTab({ tab }: Props) {
         hasLoadedInitial.current = true;
         setLoadingMessages(true);
         try {
-          const msgs = await invoke<any[]>("load_folder_messages", { folderPath: tab.folderPath });
-          console.log("LOADED MSGS:", msgs);
+          const msgs = await invoke<Message[]>("load_folder_messages", { folderPath: tab.folderPath });
           if (msgs.length > 0) {
             setMessages(tab.id, msgs);
           }
         } catch (e) {
-          console.error(e);
+          setError(String(e));
         } finally {
           setLoadingMessages(false);
         }
@@ -59,11 +58,10 @@ export function ReadTab({ tab }: Props) {
     if (tab.folderPath) {
       setLoadingMessages(true);
       try {
-        const msgs = await invoke<any[]>("load_folder_messages", { folderPath: tab.folderPath });
-        console.log("RELOADED MSGS:", msgs);
+        const msgs = await invoke<Message[]>("load_folder_messages", { folderPath: tab.folderPath });
         setMessages(tab.id, msgs);
       } catch (e) {
-        console.error(e);
+        setError(String(e));
       } finally {
         setLoadingMessages(false);
       }
@@ -72,6 +70,7 @@ export function ReadTab({ tab }: Props) {
 
   async function startConsuming() {
     setError(null);
+    updateTab(tab.id, { lastError: undefined });
     try {
       const res = await invoke<ConsumerSessionInfo>("start_consumer", { 
         tabId: tab.id, 
@@ -230,6 +229,7 @@ export function ReadTab({ tab }: Props) {
       </div>
 
       {error && <div className="read-error">{error}</div>}
+      {!error && tab.lastError && <div className="read-error">{tab.lastError}</div>}
 
       <ReadMessageList tabId={tab.id} started={started} loading={loadingMessages} />
     </div>

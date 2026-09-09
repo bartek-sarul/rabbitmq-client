@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppConfig, ConnectionDef } from "../types";
@@ -18,6 +18,8 @@ const MODAL_SIZE_STORAGE_KEY = "configEditorModalSize.v2";
 const MODAL_MIN_WIDTH = 700;
 const MODAL_MIN_HEIGHT = 450;
 const LEFT_PANEL_MIN_WIDTH = 180;
+const RIGHT_PANEL_MIN_WIDTH = 400;
+const DEFAULT_LEFT_PANEL_WIDTH = 250;
 
 const pathInputStyle: CSSProperties = {
   flex: 1,
@@ -49,7 +51,19 @@ function FolderIcon() {
 
 export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Props) {
   const [savePath, setSavePath] = useState(initialConfig?.save_path || "");
-  const [connections, setConnections] = useState<ConnectionDef[]>(initialConfig?.connections || []);
+  // Deep-copy the incoming config: the edit handlers below mutate nested
+  // queue/exchange objects in place, and a shallow copy would write straight
+  // through to the sidebar's config — so Cancel would not actually cancel.
+  const [connections, setConnections] = useState<ConnectionDef[]>(() =>
+    (initialConfig?.connections || []).map((c) => ({
+      ...c,
+      queues: (c.queues || []).map((q) => ({ ...q })),
+      exchanges: (c.exchanges || []).map((e) => ({
+        ...e,
+        routing_keys: e.routing_keys ? [...e.routing_keys] : undefined,
+      })),
+    }))
+  );
   const [selectedConnIndex, setSelectedConnIndex] = useState<number | null>(
     initialConfig?.connections && initialConfig.connections.length > 0 ? 0 : null
   );
@@ -78,8 +92,13 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
   const [leftPanelWidth, setLeftPanelWidth] = useState<number>(() => {
     const saved = localStorage.getItem("configEditorLeftPanelWidth");
     const parsed = saved ? parseInt(saved, 10) : NaN;
-    return Number.isFinite(parsed) ? parsed : 250;
+    return Number.isFinite(parsed) ? parsed : DEFAULT_LEFT_PANEL_WIDTH;
   });
+
+  const [draggingLeftPanel, setDraggingLeftPanel] = useState(false);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => dragCleanupRef.current?.(), []);
 
   useEffect(() => {
     localStorage.setItem(MODAL_SIZE_STORAGE_KEY, JSON.stringify(modalSize));
@@ -88,6 +107,13 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
   useEffect(() => {
     localStorage.setItem("configEditorLeftPanelWidth", leftPanelWidth.toString());
   }, [leftPanelWidth]);
+
+  // Shrinking the modal must not leave the (non-shrinking) left panel wide
+  // enough to squeeze the connection editor out of view.
+  useEffect(() => {
+    const max = Math.max(LEFT_PANEL_MIN_WIDTH, modalSize.width - RIGHT_PANEL_MIN_WIDTH);
+    setLeftPanelWidth((prev) => (prev > max ? max : prev));
+  }, [modalSize.width]);
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -275,6 +301,36 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
     }
   }
 
+  function startLeftPanelDrag(e: React.MouseEvent) {
+    e.preventDefault();
+    setDraggingLeftPanel(true);
+    document.body.style.cursor = "col-resize";
+    // Stops the drag from selecting the connection names it passes over.
+    document.body.style.userSelect = "none";
+
+    const handleMouseMove = (me: MouseEvent) => {
+      setLeftPanelWidth((prev) => {
+        const max = Math.max(LEFT_PANEL_MIN_WIDTH, modalSize.width - RIGHT_PANEL_MIN_WIDTH);
+        return Math.min(max, Math.max(LEFT_PANEL_MIN_WIDTH, prev + me.movementX));
+      });
+    };
+
+    const handleMouseUp = () => {
+      setDraggingLeftPanel(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      dragCleanupRef.current = null;
+    };
+
+    // Unmounting mid-drag (Escape closes the modal) must not strand these.
+    dragCleanupRef.current = handleMouseUp;
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }
+
   async function handleOpenSaveFolder() {
     if (!savePath.trim()) {
       setError("Message store folder is empty.");
@@ -368,42 +424,8 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
             flexDirection: "column",
             background: "var(--bg-sidebar)",
             overflow: "hidden",
-            padding: "16px",
-            position: "relative"
+            padding: "16px"
           }}>
-            {/* Left panel resize handle */}
-            <div
-              style={{
-                width: "8px",
-                cursor: "col-resize",
-                position: "absolute",
-                right: "-4px",
-                top: 0,
-                bottom: 0,
-                zIndex: 5
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                document.body.style.cursor = "col-resize";
-
-                const handleMouseMove = (me: MouseEvent) => {
-                  setLeftPanelWidth((prev) => {
-                    const max = Math.max(LEFT_PANEL_MIN_WIDTH, modalSize.width - 400);
-                    return Math.min(max, Math.max(LEFT_PANEL_MIN_WIDTH, prev + me.movementX));
-                  });
-                };
-
-                const handleMouseUp = () => {
-                  document.body.style.cursor = "";
-                  window.removeEventListener("mousemove", handleMouseMove);
-                  window.removeEventListener("mouseup", handleMouseUp);
-                };
-
-                window.addEventListener("mousemove", handleMouseMove);
-                window.addEventListener("mouseup", handleMouseUp);
-              }}
-            />
-
             <div style={{ marginBottom: "16px" }}>
               <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Configuration file path</label>
               <div style={{ display: "flex", gap: "6px" }}>
@@ -566,6 +588,29 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
               </div>
             </div>
           </div>
+
+          {/* Left panel resizer: a sibling of both panes, so it is not clipped
+              by the left panel's overflow and gets a full-height grab area. */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            title="Drag to resize"
+            onMouseDown={startLeftPanelDrag}
+            onDoubleClick={() => setLeftPanelWidth(DEFAULT_LEFT_PANEL_WIDTH)}
+            style={{
+              width: "6px",
+              flexShrink: 0,
+              cursor: "col-resize",
+              background: draggingLeftPanel ? "var(--accent-color)" : "var(--border-color)",
+              transition: draggingLeftPanel ? "none" : "background 120ms ease"
+            }}
+            onMouseEnter={(e) => {
+              if (!draggingLeftPanel) e.currentTarget.style.background = "var(--accent-color)";
+            }}
+            onMouseLeave={(e) => {
+              if (!draggingLeftPanel) e.currentTarget.style.background = "var(--border-color)";
+            }}
+          />
 
           {/* Right panel */}
           <div style={{ flex: 1, padding: "24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useAppStore } from "./useAppStore";
+import { useAppStore, MAX_MESSAGES_PER_TAB } from "./useAppStore";
 import { Tab, Message } from "../types";
 
 describe("useAppStore", () => {
@@ -23,7 +23,6 @@ describe("useAppStore", () => {
     const tab: Tab = {
       id: "tab-1",
       connName: "local",
-      connUrl: "amqp://localhost",
       targetName: "my-queue",
       targetType: "queue",
       mode: "write",
@@ -44,7 +43,6 @@ describe("useAppStore", () => {
     const tab: Tab = {
       id: "tab-1",
       connName: "local",
-      connUrl: "amqp://localhost",
       targetName: "my-queue",
       targetType: "queue",
       mode: "write",
@@ -65,7 +63,6 @@ describe("useAppStore", () => {
     const tab1: Tab = {
       id: "tab-1",
       connName: "local",
-      connUrl: "amqp://localhost",
       targetName: "q1",
       targetType: "queue",
       mode: "write",
@@ -75,7 +72,6 @@ describe("useAppStore", () => {
     const tab2: Tab = {
       id: "tab-2",
       connName: "local",
-      connUrl: "amqp://localhost",
       targetName: "q2",
       targetType: "queue",
       mode: "write",
@@ -96,7 +92,6 @@ describe("useAppStore", () => {
     const tab: Tab = {
       id: "tab-1",
       connName: "local",
-      connUrl: "amqp://localhost",
       targetName: "q1",
       targetType: "queue",
       mode: "write",
@@ -131,9 +126,9 @@ describe("useAppStore", () => {
   });
 
   it("should adjust active tab selection when active tab is removed", () => {
-    const tab1: Tab = { id: "tab-1", connName: "local", connUrl: "", targetName: "q1", targetType: "queue", mode: "write", ackMode: "ack", label: "q1" };
-    const tab2: Tab = { id: "tab-2", connName: "local", connUrl: "", targetName: "q2", targetType: "queue", mode: "write", ackMode: "ack", label: "q2" };
-    const tab3: Tab = { id: "tab-3", connName: "local", connUrl: "", targetName: "q3", targetType: "queue", mode: "write", ackMode: "ack", label: "q3" };
+    const tab1: Tab = { id: "tab-1", connName: "local", targetName: "q1", targetType: "queue", mode: "write", ackMode: "ack", label: "q1" };
+    const tab2: Tab = { id: "tab-2", connName: "local", targetName: "q2", targetType: "queue", mode: "write", ackMode: "ack", label: "q2" };
+    const tab3: Tab = { id: "tab-3", connName: "local", targetName: "q3", targetType: "queue", mode: "write", ackMode: "ack", label: "q3" };
 
     useAppStore.getState().addTab(tab1);
     useAppStore.getState().addTab(tab2);
@@ -156,7 +151,6 @@ describe("useAppStore", () => {
     const tab: Tab = {
       id: "tab-1",
       connName: "local",
-      connUrl: "amqp://localhost",
       targetName: "my-queue",
       targetType: "queue",
       mode: "read",
@@ -206,17 +200,97 @@ describe("useAppStore", () => {
     expect(state.messages["tab-1"][0]).toEqual(msg2);
     expect(state.messages["tab-1"][1]).toEqual(msg1);
 
-    // Tab lastReceived should have updated
-    expect(state.tabs[0].lastReceived).toBe(mockTime);
+    // tab-1 is the active tab, so it is deliberately not stamped: the marker
+    // exists to flash *background* tabs, and stamping it on every delivery
+    // rewrote the tab list for every subscriber.
+    expect(state.tabs[0].lastReceived).toBeUndefined();
 
     vi.restoreAllMocks();
+  });
+
+  it("should stamp lastReceived only on tabs that are not active", () => {
+    useAppStore.setState({ tabs: [], activeTabId: null, messages: {} });
+
+    const background: Tab = {
+      id: "tab-bg",
+      connName: "local",
+      targetName: "q-bg",
+      targetType: "queue",
+      mode: "read",
+      ackMode: "ack",
+      label: "q-bg",
+    };
+    const active: Tab = {
+      id: "tab-active",
+      connName: "local",
+      targetName: "q-active",
+      targetType: "queue",
+      mode: "read",
+      ackMode: "ack",
+      label: "q-active",
+    };
+
+    useAppStore.getState().addTab(background);
+    useAppStore.getState().addTab(active); // addTab focuses the new tab
+
+    const mockTime = 1780826400000;
+    vi.spyOn(Date, "now").mockReturnValue(mockTime);
+
+    const msg: Message = {
+      id: "m1",
+      timestamp: "2026-06-06T12:00:00Z",
+      filePath: "/tmp/m1.json",
+      body: "hello",
+      headersStr: "",
+      properties: {
+        content_type: null,
+        delivery_mode: null,
+        correlation_id: null,
+        message_id: null,
+      },
+    };
+
+    useAppStore.getState().addMessage("tab-bg", msg);
+    useAppStore.getState().addMessage("tab-active", msg);
+
+    const state = useAppStore.getState();
+    expect(state.tabs.find((t) => t.id === "tab-bg")?.lastReceived).toBe(mockTime);
+    expect(state.tabs.find((t) => t.id === "tab-active")?.lastReceived).toBeUndefined();
+
+    vi.restoreAllMocks();
+  });
+
+  it("should cap the message list per tab", () => {
+    useAppStore.setState({ tabs: [], activeTabId: null, messages: {} });
+
+    const makeMsg = (id: string): Message => ({
+      id,
+      timestamp: "2026-06-06T12:00:00Z",
+      filePath: `/tmp/${id}.json`,
+      body: id,
+      headersStr: "",
+      properties: {
+        content_type: null,
+        delivery_mode: null,
+        correlation_id: null,
+        message_id: null,
+      },
+    });
+
+    for (let i = 0; i < MAX_MESSAGES_PER_TAB + 25; i++) {
+      useAppStore.getState().addMessage("tab-cap", makeMsg(`m${i}`));
+    }
+
+    const msgs = useAppStore.getState().messages["tab-cap"];
+    expect(msgs).toHaveLength(MAX_MESSAGES_PER_TAB);
+    // Newest first, and the oldest ones are the ones dropped.
+    expect(msgs[0].id).toBe(`m${MAX_MESSAGES_PER_TAB + 24}`);
   });
 
   it("should clear messages for a tab", () => {
     const tab: Tab = {
       id: "tab-1",
       connName: "local",
-      connUrl: "amqp://localhost",
       targetName: "my-queue",
       targetType: "queue",
       mode: "read",

@@ -1,14 +1,17 @@
+import { memo } from "react";
 import { Message } from "../types";
 
 interface Props {
   message: Message;
   isSelected: boolean;
-  onClick: () => void;
+  /// Takes the id rather than a bound closure so the parent can pass one
+  /// stable callback and `memo` actually holds.
+  onSelect: (id: string) => void;
 }
 
-export function MessageRow({ message, isSelected, onClick }: Props) {
+export const MessageRow = memo(function MessageRow({ message, isSelected, onSelect }: Props) {
   return (
-    <div className={`message-row ${isSelected ? "expanded" : ""}`} onClick={onClick} style={{ cursor: "pointer" }}>
+    <div className={`message-row ${isSelected ? "expanded" : ""}`} onClick={() => onSelect(message.id)} style={{ cursor: "pointer" }}>
       <div className="message-row-summary">
         <span className="col col-ts">
           {String(message.timestamp).replace("T", " ").slice(0, 19)}
@@ -22,4 +25,4 @@ export function MessageRow({ message, isSelected, onClick }: Props) {
       </div>
     </div>
   );
-}
+});

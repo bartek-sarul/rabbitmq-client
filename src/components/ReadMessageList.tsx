@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from "react";
-import { useAppStore } from "../store/useAppStore";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useAppStore, EMPTY_MESSAGES } from "../store/useAppStore";
 import { MessageRow } from "./MessageRow";
 import { MessageDetailPanel } from "./MessageDetailPanel";
+
+type SearchTarget = "everywhere" | "headers" | "properties" | "body";
 
 interface Props {
   tabId: string;
@@ -10,7 +12,7 @@ interface Props {
 }
 
 export function ReadMessageList({ tabId, started, loading }: Props) {
-  const messages = useAppStore((s) => s.messages[tabId] ?? []);
+  const messages = useAppStore((s) => s.messages[tabId] ?? EMPTY_MESSAGES);
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null);
   
   const [panelWidth, setPanelWidth] = useState(() => {
@@ -20,7 +22,7 @@ export function ReadMessageList({ tabId, started, loading }: Props) {
   });
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchTarget, setSearchTarget] = useState<"everywhere" | "headers" | "properties" | "body">("everywhere");
+  const [searchTarget, setSearchTarget] = useState<SearchTarget>("everywhere");
 
   useEffect(() => {
     localStorage.setItem('messagePanelWidth', panelWidth.toString());
@@ -37,27 +39,56 @@ export function ReadMessageList({ tabId, started, loading }: Props) {
   }, [selectedMsgId]);
 
   const dragRef = useRef<boolean>(false);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => dragCleanupRef.current?.(), []);
 
   const selectedMessage = messages.find(m => m.id === selectedMsgId) || null;
 
-  const filteredMessages = messages.filter((msg) => {
-    if (!searchQuery.trim()) return true;
+  // Typing a regex should not re-filter the whole (unbounded) list on every
+  // keystroke while messages are still streaming in.
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Compile the regex once per query instead of once per message per render.
+  const searchRegex = useMemo(() => {
+    const q = debouncedQuery.trim();
+    if (!q) return null;
     try {
-      const regex = new RegExp(searchQuery, "i");
-      if (searchTarget === "everywhere") {
-         return regex.test(msg.body || "") || regex.test(msg.headersStr || "") || regex.test(JSON.stringify(msg.properties));
-      } else if (searchTarget === "body") {
-         return regex.test(msg.body || "");
-      } else if (searchTarget === "headers") {
-         return regex.test(msg.headersStr || "");
-      } else if (searchTarget === "properties") {
-         return regex.test(JSON.stringify(msg.properties));
-      }
-    } catch (e) {
-      return false;
+      return new RegExp(q, "i");
+    } catch {
+      return "invalid" as const;
     }
-    return true;
-  });
+  }, [debouncedQuery]);
+
+  const filteredMessages = useMemo(() => {
+    if (!searchRegex) return messages;
+    if (searchRegex === "invalid") return [];
+
+    return messages.filter((msg) => {
+      switch (searchTarget) {
+        case "body":
+          return searchRegex.test(msg.body || "");
+        case "headers":
+          return searchRegex.test(msg.headersStr || "");
+        case "properties":
+          return searchRegex.test(JSON.stringify(msg.properties));
+        default:
+          return (
+            searchRegex.test(msg.body || "") ||
+            searchRegex.test(msg.headersStr || "") ||
+            searchRegex.test(JSON.stringify(msg.properties))
+          );
+      }
+    });
+  }, [messages, searchRegex, searchTarget]);
+
+  const handleSelect = useCallback((id: string) => {
+    setSelectedMsgId((prev) => (prev === id ? null : id));
+  }, []);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", position: "relative" }}>
@@ -84,7 +115,7 @@ export function ReadMessageList({ tabId, started, loading }: Props) {
         </div>
         <select
           value={searchTarget}
-          onChange={(e) => setSearchTarget(e.target.value as any)}
+          onChange={(e) => setSearchTarget(e.target.value as SearchTarget)}
           style={{ padding: "8px 30px 8px 12px", fontSize: "13px", height: "36px", boxSizing: "border-box", width: "140px" }}
         >
           <option value="everywhere">Everywhere</option>
@@ -135,7 +166,7 @@ export function ReadMessageList({ tabId, started, loading }: Props) {
               key={msg.id} 
               message={msg} 
               isSelected={msg.id === selectedMsgId}
-              onClick={() => setSelectedMsgId(msg.id === selectedMsgId ? null : msg.id)}
+              onSelect={handleSelect}
             />
           ))
         )}
@@ -180,8 +211,13 @@ export function ReadMessageList({ tabId, started, loading }: Props) {
                 document.body.style.cursor = "";
                 window.removeEventListener("mousemove", handleMouseMove);
                 window.removeEventListener("mouseup", handleMouseUp);
+                dragCleanupRef.current = null;
               };
-              
+
+              // Unmounting mid-drag would otherwise leave these on `window`
+              // and the body stuck in a col-resize cursor.
+              dragCleanupRef.current = handleMouseUp;
+
               window.addEventListener("mousemove", handleMouseMove);
               window.addEventListener("mouseup", handleMouseUp);
             }}
