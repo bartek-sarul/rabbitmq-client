@@ -27,6 +27,7 @@ pub fn run() {
             commands::save_config_struct,
             commands::parse_yaml_config,
             commands::show_config_in_file_manager,
+            commands::get_config_path,
             commands::exit_app,
         ])
         .run(tauri::generate_context!())

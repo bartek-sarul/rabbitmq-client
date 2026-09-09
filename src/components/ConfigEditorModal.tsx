@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppConfig, ConnectionDef } from "../types";
 import { fuzzyMatch } from "../utils/fuzzyMatch";
@@ -9,9 +10,42 @@ interface Props {
   initialConfig: AppConfig | null;
 }
 
+// Bumped 50% over the original 850x600 default; the storage key is versioned
+// so existing users pick the larger default up once.
+const DEFAULT_MODAL_WIDTH = 1275;
+const DEFAULT_MODAL_HEIGHT = 900;
+const MODAL_SIZE_STORAGE_KEY = "configEditorModalSize.v2";
 const MODAL_MIN_WIDTH = 700;
 const MODAL_MIN_HEIGHT = 450;
 const LEFT_PANEL_MIN_WIDTH = 180;
+
+const pathInputStyle: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  padding: "8px",
+  background: "var(--bg-primary)",
+  border: "1px solid var(--border-color)",
+  color: "var(--text-primary)",
+  borderRadius: "6px",
+  fontSize: "12px"
+};
+
+const folderButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+  padding: "8px",
+  borderColor: "var(--border-color)"
+};
+
+function FolderIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
 
 export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Props) {
   const [savePath, setSavePath] = useState(initialConfig?.save_path || "");
@@ -20,9 +54,16 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
     initialConfig?.connections && initialConfig.connections.length > 0 ? 0 : null
   );
   const [connSearchQuery, setConnSearchQuery] = useState("");
+  const [configPath, setConfigPath] = useState("");
+
+  useEffect(() => {
+    invoke<string>("get_config_path")
+      .then(setConfigPath)
+      .catch((err) => setError(String(err)));
+  }, []);
 
   const [modalSize, setModalSize] = useState<{ width: number; height: number }>(() => {
-    const saved = localStorage.getItem("configEditorModalSize");
+    const saved = localStorage.getItem(MODAL_SIZE_STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -31,7 +72,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
         // ignore malformed value
       }
     }
-    return { width: 850, height: 600 };
+    return { width: DEFAULT_MODAL_WIDTH, height: DEFAULT_MODAL_HEIGHT };
   });
 
   const [leftPanelWidth, setLeftPanelWidth] = useState<number>(() => {
@@ -41,7 +82,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
   });
 
   useEffect(() => {
-    localStorage.setItem("configEditorModalSize", JSON.stringify(modalSize));
+    localStorage.setItem(MODAL_SIZE_STORAGE_KEY, JSON.stringify(modalSize));
   }, [modalSize]);
 
   useEffect(() => {
@@ -234,6 +275,19 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
     }
   }
 
+  async function handleOpenSaveFolder() {
+    if (!savePath.trim()) {
+      setError("Message store folder is empty.");
+      return;
+    }
+    try {
+      setError(null);
+      await invoke("open_folder", { path: savePath.trim() });
+    } catch (err) {
+      setError(String(err));
+    }
+  }
+
   // Save config
   async function handleSave() {
     setError(null);
@@ -350,23 +404,49 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
               }}
             />
 
-            <div style={{ marginBottom: "20px" }}>
+            <div style={{ marginBottom: "16px" }}>
               <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Configuration file path</label>
-              <input
-                type="text"
-                value={savePath}
-                onChange={(e) => setSavePath(e.target.value)}
-                placeholder="/path/to/folder"
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  background: "var(--bg-primary)",
-                  border: "1px solid var(--border-color)",
-                  color: "var(--text-primary)",
-                  borderRadius: "6px",
-                  fontSize: "12px"
-                }}
-              />
+              <div style={{ display: "flex", gap: "6px" }}>
+                <input
+                  type="text"
+                  value={configPath}
+                  readOnly
+                  title={configPath}
+                  style={{ ...pathInputStyle, cursor: "default" }}
+                />
+                <button
+                  onClick={handleShowConfigInFolder}
+                  className="btn-secondary"
+                  style={folderButtonStyle}
+                  title={showFolderLabel}
+                  aria-label={showFolderLabel}
+                >
+                  <FolderIcon />
+                </button>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>Message store folder</label>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <input
+                  type="text"
+                  value={savePath}
+                  onChange={(e) => setSavePath(e.target.value)}
+                  placeholder="/path/to/folder"
+                  title={savePath}
+                  style={pathInputStyle}
+                />
+                <button
+                  onClick={handleOpenSaveFolder}
+                  className="btn-secondary"
+                  style={folderButtonStyle}
+                  title={showFolderLabel}
+                  aria-label={showFolderLabel}
+                >
+                  <FolderIcon />
+                </button>
+              </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
@@ -842,24 +922,7 @@ export function ConfigEditorModal({ onClose, onSaveSuccess, initialConfig }: Pro
           borderTop: "1px solid var(--border-color)",
           background: "var(--bg-sidebar)"
         }}>
-          <div>
-            <button
-              onClick={handleShowConfigInFolder}
-              className="btn-secondary"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "8px 14px",
-                borderColor: "var(--border-color)"
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-              </svg>
-              {showFolderLabel}
-            </button>
-          </div>
+          <div />
           <div style={{ display: "flex", gap: "12px" }}>
             <button
               onClick={onClose}

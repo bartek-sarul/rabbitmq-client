@@ -152,7 +152,7 @@ export function MessageDetailPanel({ message, onClose }: Props) {
     if (!debouncedSearchQuery || debouncedSearchQuery.length < 2) return { html: null, count: 0 };
     
     // Escape regex special chars
-    const safeRegexQuery = debouncedSearchQuery.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+    const safeRegexQuery = debouncedSearchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`(${safeRegexQuery})`, 'gi');
     
     let count = 0;
@@ -355,6 +355,13 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                   </div>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button
+                      className={`btn-secondary ${copiedSection === "full" ? "copied" : ""}`}
+                      style={{ padding: "4px 8px", fontSize: "12px", height: "auto" }}
+                      onClick={() => doCopy(JSON.stringify(fullMessage, null, 2), "full")}
+                    >
+                      {copiedSection === "full" ? "Copied ✓" : "Copy Full Message"}
+                    </button>
+                    <button
                       className={`btn-secondary ${copiedSection === "body" ? "copied" : ""}`}
                       style={{ padding: "4px 8px", fontSize: "12px", height: "auto" }}
                       onClick={() => doCopy(fullMessage.body, "body")}
@@ -467,23 +474,6 @@ export function MessageDetailPanel({ message, onClose }: Props) {
                </div>
             ) : (
               <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                   className={`btn-secondary ${copiedSection === "full" ? "copied" : ""}`}
-                   onClick={() => doCopy(JSON.stringify(fullMessage, null, 2), "full")}
-                   style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                 >
-                   {copiedSection === "full" ? (
-                     <>Copied ✓</>
-                   ) : (
-                     <>
-                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                       </svg>
-                       Copy Full Message
-                     </>
-                   )}
-                 </button>
                  <button
                    className="btn-primary"
                    onClick={() => setShowCopyToWriter(true)}

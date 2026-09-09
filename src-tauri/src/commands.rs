@@ -574,6 +574,12 @@ pub fn open_folder(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn get_config_path() -> Result<String, String> {
+    let home = dirs::home_dir().ok_or_else(|| "Cannot find home directory".to_string())?;
+    Ok(home.join(".rabbit-client.yaml").to_string_lossy().to_string())
+}
+
+#[tauri::command]
 pub fn show_config_in_file_manager() -> Result<(), String> {
     let home = dirs::home_dir().ok_or_else(|| "Cannot find home directory".to_string())?;
     let config_path = home.join(".rabbit-client.yaml");

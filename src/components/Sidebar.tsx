@@ -16,13 +16,15 @@ interface OpenTabOptions {
   folderPath?: string;
 }
 
+// New consumer tabs default to Consume (ACK); Peek (NACK) is opt-in per tab.
+const DEFAULT_ACK_MODE: AckMode = "ack";
+
 export function Sidebar() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<{ conn: ConnectionDef; targetName: string; targetType: TargetType } | null>(null);
   const [modeChoice, setModeChoice] = useState<TabMode>("read");
-  const [ackChoice, setAckChoice] = useState<AckMode>("ack");
   const [opening, setOpening] = useState(false);
   const [folderPath, setFolderPath] = useState<string>("");
   const [useLastFolder, setUseLastFolder] = useState<boolean>(true);
@@ -159,7 +161,6 @@ export function Sidebar() {
     } else {
       setModeChoice("read");
     }
-    setAckChoice("ack");
   }
 
   async function openTab(opts: OpenTabOptions) {
@@ -515,7 +516,7 @@ export function Sidebar() {
                     targetName: pending.targetName,
                     targetType: pending.targetType,
                     mode: modeChoice,
-                    ackMode: ackChoice,
+                    ackMode: DEFAULT_ACK_MODE,
                     folderPath: modeChoice === "read" ? folderPath : undefined
                   });
                 }}

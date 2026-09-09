@@ -2,7 +2,7 @@
 
 A lightweight, premium, cross-platform desktop application for interacting with RabbitMQ queues and exchanges. Built with **Tauri v2 (Rust backend) + React 19 + TypeScript + Zustand + Vite**.
 
-This document serves as the complete architectural blueprint and design specification for the RabbitMQ Desktop Client. It details every frontend and backend component, feature, state schema, and IPC contract so that the entire application can be recreated from scratch.
+This document is the architectural reference for the RabbitMQ Desktop Client: every frontend and backend component, feature, state schema, and IPC contract. For day-to-day contributor conventions (commands, file layout, styling rules), see [`CLAUDE.md`](CLAUDE.md).
 
 ---
 
@@ -18,12 +18,14 @@ This document serves as the complete architectural blueprint and design specific
 ### Config & Connection Manager
 ![Configuration Editor Modal](docs/screenshots/02-config-editor.png)
 * **YAML Based**: Saves environment connections, queues, and exchanges securely to `~/.rabbit-client.yaml`.
-* **Visual Config Editor**: Built-in modal for visually editing the raw YAML config. Instantly parses, validates, and reloads the left sidebar without requiring application restarts.
-* **Open File Location**: Native integration to open the local folder where the `.rabbit-client.yaml` resides.
+* **Visual Config Editor**: Built-in modal for visually editing the config. Instantly parses, validates, and reloads the left sidebar without requiring application restarts.
+* **Connection Search**: Fuzzy subsequence search over the connection list (in both the sidebar and the config editor), so `prd` matches `payments-prod-eu`.
+* **Resizable Editor**: The config editor can be resized from its bottom-right corner and its connection panel dragged wider; both dimensions persist between sessions.
+* **Path Shortcuts**: The editor shows the **configuration file path** and the **message store folder** side by side, each with a folder button that reveals it in Finder / Explorer / the system file manager.
 
 ### Consumer Tab (Read Mode)
 ![Consumer Stream UI](docs/screenshots/03-consumer-tab.png)
-* **ACK / NACK Control**: Choose between **Consume (ACK)** which permanently dequeues messages, or **Peek (NACK)** which reads them while leaving them on the broker.
+* **ACK / NACK Control**: Choose between **Consume (ACK)**, the default, which permanently dequeues messages, or **Peek (NACK)** which reads them while leaving them on the broker.
 * **Live Streaming & UI**: Split-pane layout. Left side shows a streaming list of incoming messages with timestamps. Right side is a detailed inspector.
 * **High-Performance Payload Search**: 
   * The message payload inspector features a blazing-fast, case-insensitive text search.
@@ -92,8 +94,9 @@ graph TD
 
 The application reads and writes its connection definitions from a localized configuration file.
 
-*   **Location**: `~/.rabbit-client.yaml`
+*   **Location**: `~/.rabbit-client.yaml` (auto-created from a template on first launch)
 *   **Format**: YAML
+*   **`save_path`**: the *message store folder* — where consumed messages are written to disk. It is distinct from the config file location above.
 
 ### Schema Layout
 ```yaml
@@ -141,6 +144,9 @@ pub struct ActiveTab {
 }
 
 pub struct TabManager(pub Mutex<HashMap<String, ActiveTab>>);
+
+// Publisher connections, reused across sends and keyed by AMQP URL.
+pub struct ConnectionPool(pub tokio::sync::Mutex<HashMap<String, Connection>>);
 ```
 
 ### Encapsulated Methods on `TabManager`
@@ -157,15 +163,21 @@ pub struct TabManager(pub Mutex<HashMap<String, ActiveTab>>);
 | Command Name | Arguments | Behavior |
 |---|---|---|
 | `load_config_cmd` | None | Parses and validates `~/.rabbit-client.yaml`. |
-| `open_tab` | `tab_id`, `conn_url`, `conn_name`, `target_name`, `target_type`, `mode`, `ack_mode` | Inserts tab state metadata into the `TabManager`. |
-| `close_tab` | `tab_id` | Cancels any active consumer loop and removes metadata. |
-| `send_message` | `tab_id`, `body`, `routing_key`, `headers`, `properties` | Establishes a temporary connection, dispatches, confirms, and closes gracefully. |
-| `start_consumer` | `tab_id`, `ack_mode: AckMode` | Spawns a background Tokio task to loop and consume messages, returning folder path details. |
-| `stop_consumer` | `tab_id` | Signals the background loop to cancel and exit gracefully. |
-| `read_message_file`| `path` | Reads a message's full payload JSON file from disk on demand. |
-| `open_folder` | `path` | Spawns Finder (mac), Explorer (Win), or xdg-open (Linux) for the specified directory. |
 | `read_raw_config` | None | Reads the raw text contents of the YAML configuration file. |
 | `save_raw_config` | `content` | Validates and saves a raw configuration YAML string to disk. |
+| `save_config_struct` | `config` | Serializes an edited `AppConfig` back to YAML and writes it. |
+| `parse_yaml_config` | `content` | Parses and validates YAML without writing, for live editor feedback. |
+| `get_config_path` | None | Returns the absolute path of `~/.rabbit-client.yaml` for display in the editor. |
+| `show_config_in_file_manager` | None | Reveals the config file in Finder / Explorer / the file manager. |
+| `open_tab` | `tab_id`, `conn_url`, `conn_name`, `target_name`, `target_type`, `mode`, `ack_mode` | Inserts tab state metadata into the `TabManager`. |
+| `close_tab` | `tab_id` | Cancels any active consumer loop and removes metadata. |
+| `send_message` | `tab_id`, `body`, `routing_key`, `headers`, `properties` | Publishes over a pooled connection, confirms, and closes the channel. |
+| `start_consumer` | `tab_id`, `ack_mode: AckMode` | Spawns a background Tokio task to loop and consume messages, returning folder path details. |
+| `stop_consumer` | `tab_id` | Signals the background loop to cancel and exit gracefully. |
+| `generate_default_folder_path` | `conn_name`, `target_name` | Builds the timestamped message-store subfolder path under `save_path`. |
+| `load_folder_messages` | `folder_path` | Re-reads a previously used message folder so a reopened tab shows its history. |
+| `read_message_file` | `path` | Reads a message's full payload JSON file from disk on demand. |
+| `open_folder` | `path` | Spawns Finder (mac), Explorer (Win), or xdg-open (Linux) for the specified directory. |
 | `exit_app` | `AppHandle` | Gracefully and instantly force-kills the native process to bypass Javascript event loop. |
 
 ---
@@ -212,43 +224,50 @@ stateDiagram-v2
 
 ## 7. Frontend State Management (Zustand)
 
-Global frontend states are managed via a single Zustand store (`useAppStore.ts`).
+All global frontend state lives in a single, deliberately small Zustand store (`src/store/useAppStore.ts`).
 
-### Selector Performance Optimization
-To prevent UI lagging and rendering cascades when background tabs receive streamed messages, components **must not** select the root store object or the full tabs array. Instead, they use memoized, fine-grained selectors and Zustand's `useShallow` hook:
+### Shape
+```typescript
+interface AppStore {
+  tabs: Tab[];                          // ordered list, drives the TabBar
+  activeTabId: string | null;
+  messages: Record<string, Message[]>;  // per tab, newest first (prepended)
+}
+```
 
-1.  **Active Tab Isolation**:
-    ```typescript
-    export const selectActiveTab = (state: AppStoreState) => 
-      state.activeTabId ? state.tabs[state.activeTabId] : null;
-    ```
-    This ensures that components displaying active tab details only re-render if the focused tab actually updates, ignoring updates to inactive tabs.
-2.  **Shallow Tab ID List**:
-    ```typescript
-    export const selectTabIds = (state: AppStoreState) => state.tabIds;
-    ```
-    Used by the TabBar list container via `useShallow(selectTabIds)` so tab additions/deletions re-render the container, but individual tab updates do not.
-3.  **Message Subscriptions**:
-    ```typescript
-    export const selectMessagesByTabId = (tabId: string) => (state: AppStoreState) => 
-      state.messages[tabId] || EMPTY_ARRAY;
-    ```
-    Returns a static empty array reference if no messages exist.
+### Actions
+`addTab`, `removeTab`, `setActiveTab`, `addMessage`, `setMessages`, `clearMessages`, `updateTab`.
+
+*   `addTab` seeds an empty message list and focuses the new tab.
+*   `removeTab` drops the tab's messages and falls back to the last remaining tab.
+*   `addMessage` prepends the message and stamps `lastReceived` on the tab, which is what drives the
+    unread dot on inactive tabs in the `TabBar`.
+
+### Rendering Strategy
+*   **Every tab stays mounted.** `App.tsx` renders all tabs and hides the inactive ones with
+    `display: none`, so a background consumer keeps its scroll position, filters and message list.
+*   **Select narrowly.** Components subscribe to individual slices
+    (`useAppStore((s) => s.updateTab)`), never the whole store object, because a busy consumer writes
+    to the store on every delivery.
 
 ---
 
-## 8. Memory Leak Prevention
+## 8. Event Listener Lifecycle
 
-To prevent background event listener leakage, the registration of Tauri events is managed declaratively.
+Tauri event listeners are registered in exactly one place, `MessageListenerManager.tsx`, which is
+mounted once by `App.tsx` and renders nothing.
 
-### Message Listener Management (`MessageListenerManager.tsx`)
-*   The global manager queries the list of active tab IDs.
-*   It maps over this array and renders a child `<TabMessageListener tabId={id} />` component for each tab.
-*   When a `<TabMessageListener>` mounts, it handles setting up listeners for `msg-{tabId}` and `status-{tabId}`.
-*   When a tab is closed, its ID is removed from the Zustand array. This unmounts the `<TabMessageListener>`, automatically tearing down the event listener.
+*   It keeps a `useRef<Map<tabId, UnlistenFn[]>>` of live subscriptions.
+*   On every store change it reconciles that map against the set of read tabs currently consuming:
+    tabs that started consuming get `msg-{tabId}` and `status-{tabId}` listeners; tabs that stopped
+    or were closed have their `unlisten()` functions invoked and their entry dropped.
+*   A final unmount effect tears down everything remaining.
 
-### Window Event Interception (`App.tsx`)
-Tauri window intercepts (like `onCloseRequested`) use a `useRef` to snapshot the tab array length to avoid memory leaks. A closure leak happens when referencing asynchronous state inside the event listener setup. We bypass this entirely by using React `useRef` pointing to `tabs.length`.
+Because registration is asynchronous, a placeholder entry is inserted synchronously to stop a second
+effect run from double-subscribing the same tab.
+
+No other component may call `listen()` — routing every subscription through this one reconciler is
+what keeps listeners from outliving their tabs.
 
 ---
 
@@ -269,7 +288,8 @@ npm install
 
 #### 2. Run in Development Mode
 ```bash
-npm run tauri dev
+npm start          # tauri dev — full app (Rust + webview)
+npm run dev        # vite only — faster loop for pure UI work
 ```
 
 #### 3. Run Frontend Unit Tests (Vitest)
@@ -284,6 +304,6 @@ npm run build
 
 #### 5. Build Production Installers (OS Native)
 ```bash
-npm run tauri build
+npm run build:app
 ```
 This builds native installer packages for macOS (`.dmg`/`.app`), Windows (`.msi`), or Linux (`.deb`/`.rpm`) depending on your current host platform.
